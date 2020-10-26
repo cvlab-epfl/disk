@@ -5,7 +5,14 @@ from torch.utils.data import ConcatDataset
 from disk import DataError
 
 class LimitableDataset:
-    def __init__(self, inner, warn=False):
+    '''
+    Different scenes in the dataset have a different number of items
+    (image triplets). We want to train without being biased towards
+    scenes with more images, therefore we limit each scene to a randomly
+    chosen subset of the pairs. We can then reshuffle this subset every
+    epoch to make use of the variation in data we actually have.
+    '''
+    def __init__(self, inner, warn=True):
         self._indexes   = list(range(len(inner)))
         self._yieldable = self._indexes
         self._inner     = inner
@@ -36,10 +43,10 @@ class LimitableDataset:
         return self._inner[self._yieldable[idx]]
 
 class LimitedConcatDataset(ConcatDataset):
-    def __init__(self, datasets, limit=None, shuffle=False):
+    def __init__(self, datasets, limit=None, shuffle=False, warn=True):
         self.limit = limit
 
-        limitables = [LimitableDataset(ds) for ds in datasets]
+        limitables = [LimitableDataset(ds, warn=warn) for ds in datasets]
 
         for ds in limitables:
             ds.limit(limit, shuffle=shuffle)

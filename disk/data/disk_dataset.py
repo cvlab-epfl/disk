@@ -150,7 +150,7 @@ class DISKDataset(LimitedConcatDataset):
     '''
     def __init__(
         self, json_path, crop_size=(768, 768),
-        no_depth=False, limit=None, shuffle=False,
+        no_depth=False, limit=None, shuffle=False, warn=True,
     ):
         self.crop_size = crop_size
 
@@ -170,7 +170,8 @@ class DISKDataset(LimitedConcatDataset):
         super(DISKDataset, self).__init__(
             scene_datasets,
             limit=limit,
-            shuffle=shuffle
+            shuffle=shuffle,
+            warn=warn,
         )
          
     @staticmethod
