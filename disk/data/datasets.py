@@ -16,7 +16,7 @@ def get_datasets(
         raise ValueError("Unspecified no_depth")
 
     train_dataset = DISKDataset(
-        os.path.join(root, 'megadepth/dataset.json'),
+        os.path.join(root, 'train/dataset.json'),
         crop_size=crop_size,
         limit=1000,
         shuffle=True,
@@ -33,7 +33,7 @@ def get_datasets(
     )
 
     test_dataset = DISKDataset(
-        os.path.join(root, 'imw2020-val/dataset.json'),
+        os.path.join(root, 'test/dataset.json'),
         crop_size=crop_size,
         limit=250,
         shuffle=True,
@@ -43,6 +43,14 @@ def get_datasets(
         test_dataset, shuffle=False,
         batch_size=batch_size, **dataloader_kwargs
     )
+
+
+    if len(train_dataloader) < chunk_size:
+        raise ValueError(f'Your training dataset has {len(train_dataloader)} '
+                         f'items, which is less than your --chunk-size setting '
+                         f'({chunk_size}) therefore no chunks could be '
+                          'created. Please reduce --chunk-size or use a bigger'
+                          ' dataset.')
 
     train_chunk_iter = itertools.islice(DividedIter(
         train_dataloader,
