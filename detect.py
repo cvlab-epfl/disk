@@ -86,7 +86,7 @@ class Image:
         scaled = xys / f
 
         h, w = self.orig_shape
-        x, y = xys
+        x, y = scaled
 
         mask = (0 <= x) & (x < w) & (0 <= y) & (y < h)
 
