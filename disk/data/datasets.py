@@ -20,7 +20,7 @@ def get_datasets(
         crop_size=crop_size,
         limit=1000,
         shuffle=True,
-        no_depth=False,
+        no_depth=no_depth,
     )
     dataloader_kwargs = {
         'collate_fn': train_dataset.collate_fn,
@@ -37,7 +37,7 @@ def get_datasets(
         crop_size=crop_size,
         limit=250,
         shuffle=True,
-        no_depth=False,
+        no_depth=no_depth,
     )
     test_dataloader = DataLoader(
         test_dataset, shuffle=False,
