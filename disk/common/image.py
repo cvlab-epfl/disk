@@ -37,7 +37,7 @@ class Image:
         R     : [3, 3],
         T     : [3],
         bitmap: [3, 'H', 'W'],
-        depth : [1, 'H', 'W'],
+        depth, #[1, 'H', 'W'],
         bitmap_path: str
     ):
         self.K = K
