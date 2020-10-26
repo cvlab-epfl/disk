@@ -10,6 +10,17 @@ class CycleMatcher:
     def match_features(self, feat_1: ['N', 'F'], feat_2: ['M', 'F']) -> [2, 'K']:
         dist_m = distance_matrix(feat_1, feat_2)
 
+        if dist_m.shape[0] == 0 or dist_m.shape[1] == 0:
+            msg = '''
+            Feature matching failed because one image has 0 detected features.
+            This likely means that the algorithm has converged to a local
+            optimum of detecting no features at all (0 reward). This can arise
+            when lambda_fp and lambda_kp penalties are too high. Please check
+            that your penalty annealing scheme is sound. It can also be that
+            you are using a too low value of --warmup or --chunk-size
+            '''
+            raise RuntimeError(msg)
+
         n_amin = torch.argmin(dist_m, dim=1)
         m_amin = torch.argmin(dist_m, dim=0)
 
