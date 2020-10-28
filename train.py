@@ -43,8 +43,12 @@ parser.add_argument(
           'time.'),
 )
 parser.add_argument(
-    '--crop-size', type=int, default=768,
-    help='We train on images resized to (crop_size, crop_size)',
+    '--height', type=int, default=768,
+    help='We train on images resized to (height, width)',
+)
+parser.add_argument(
+    '--width', type=int, default=768,
+    help='We train on images resized to (height, width)',
 )
 parser.add_argument(
     '--n-epochs', type=int, default=50,
@@ -94,8 +98,7 @@ train_chunk_iter, test_iter = get_datasets(
     substep=args.substep,
     n_epochs=args.n_epochs,
 
-    # this could be non-square if one wants
-    crop_size=(args.crop_size, args.crop_size),
+    crop_size=(args.height, args.width),
 )
 
 logger = Logger(args.save_dir)
