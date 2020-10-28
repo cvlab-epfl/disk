@@ -67,6 +67,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 DEV  = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f'Using device: {DEV}')
 
 random.seed(42)
 
