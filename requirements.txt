@@ -4,6 +4,7 @@ h5py
 opencv-python
 pydegensac
 tensorboard
+tensorflow
 tqdm
 ./submodules/torch-localize
 ./submodules/torch-dimcheck
