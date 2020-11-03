@@ -1,4 +1,4 @@
-import torch, h5py, imageio, os, argparse, warnings
+import torch, h5py, imageio, os, argparse
 import numpy as np
 import torch.nn.functional as F
 from functools import partial
@@ -132,17 +132,6 @@ class SceneDataset:
         self.crop_size  = crop_size
         self.names = [p for p in os.listdir(image_path) \
                       if p.endswith(args.image_extension)]
-        if any('-' in name for name in self.names):
-            example = None
-            for name in self.names:
-                if '-' in name:
-                    example = name
-                    break
-
-            warnings.warn(f"Dash (-) in image name (for example, `{example}`). "
-                           "Dashes are used to separate "
-                           "image names in match.py and will break that "
-                           "script, if you intend to use it downstream.")
 
     def __len__(self):
         return len(self.names)
