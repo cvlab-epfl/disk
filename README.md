@@ -1,6 +1,17 @@
 # DISK
-Official code release for [DISK: learning local features with policy gradient](https://arxiv.org/abs/2006.13566).
-![Teaser image](teaser.png)
+<p align="center">
+  <img src="teaser.png" />
+</p>
+
+Official code release for [DISK: learning local features with policy gradient](https://arxiv.org/abs/2006.13566). If you use this code in your work, please cite us as
+```latex
+@article{tyszkiewicz2020disk,
+  title={DISK: Learning local features with policy gradient},
+  author={Tyszkiewicz, Micha{\l} J and Fua, Pascal and Trulls, Eduard},
+  journal={arXiv preprint arXiv:2006.13566},
+  year={2020}
+}
+```
 
 ## Table of contents
 1. [Installation](#installation)
