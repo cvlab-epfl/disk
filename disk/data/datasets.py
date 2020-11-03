@@ -10,7 +10,9 @@ def get_datasets(
     crop_size=(768, 768),
     substep=1,
     n_epochs=50,
-    chunk_size=5000
+    chunk_size=5000,
+    train_limit=1000,
+    test_limit=250,
 ):
     if no_depth is None:
         raise ValueError("Unspecified no_depth")
@@ -18,7 +20,7 @@ def get_datasets(
     train_dataset = DISKDataset(
         os.path.join(root, 'train/dataset.json'),
         crop_size=crop_size,
-        limit=1000,
+        limit=train_limit,
         shuffle=True,
         no_depth=no_depth,
     )
@@ -35,7 +37,7 @@ def get_datasets(
     test_dataset = DISKDataset(
         os.path.join(root, 'test/dataset.json'),
         crop_size=crop_size,
-        limit=250,
+        limit=test_limit,
         shuffle=True,
         no_depth=no_depth,
     )

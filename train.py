@@ -51,6 +51,20 @@ parser.add_argument(
     help='We train on images resized to (height, width)',
 )
 parser.add_argument(
+    '--train-scene-limit', type=int, default=1000,
+    help=('Different scenes in the dataset have a different amount of '
+          'covisible image triplets. We (randomly) subselect '
+          '--train-scene-limit of them for training, to avoid introducing '
+          'a data bias towards those scenes.')
+)
+parser.add_argument(
+    '--test-scene-limit', type=int, default=250,
+    help=('Different scenes in the dataset have a different amount of '
+          'covisible image triplets. We (randomly) subselect '
+          '--test-scene-limit of them for validation to avoid '
+          'to avoid introducing a bias towards those scenes.')
+)
+parser.add_argument(
     '--n-epochs', type=int, default=50,
     help='Number of (pseudo) epochs to train for',
 )
@@ -97,6 +111,8 @@ train_chunk_iter, test_iter = get_datasets(
     chunk_size=args.chunk_size,
     substep=args.substep,
     n_epochs=args.n_epochs,
+    train_limit=args.train_scene_limit,
+    test_limit=args.test_scene_limit,
 
     crop_size=(args.height, args.width),
 )
