@@ -139,4 +139,10 @@ The `dataset.json` is a file for instantiating DISK dataloaders and it contains 
 In case one wants to merge multiple scenes into a single dataset, she can execute `python colmap/merge_datasets.py my_scene_1/dataset/dataset.json my_scene_2/dataset/dataset.json ...` in order to obtain a single file called `merged.json` which contains all the scenes (and still references the files in their original locations for each of the scenes!). Scenes with repeating names (as given by the `--name` flag of `colmap2dataset`) will be renamed to unique (but non-informative) names.
 
 ## Extending
-We tried to keep the code easy to understand and reasonably documented. One particular feature is the extensive use of [`torch_dimcheck`](https://github.com/jatentaki/torch-dimcheck) (the `@dimchecked` function decorator): please refer to the repository for extra information. Please open an issue if problems are encountered.
+We tried to keep the code easy to understand and reasonably documented. Please open an issue if problems are encountered.
+
+### `@dimchecked`
+We extensively use [`torch_dimcheck`](https://github.com/jatentaki/torch-dimcheck) (the `@dimchecked` function decorator) for clarifying function signatures: please refer to the repository for extra information. 
+
+### `NpArray`
+We often deal with collections of tensors which are semantically batched but of different shapes (such as lists of features in different images of the same scene). Since PyTorch doesn't have the concept of jagged tensors, we wrap them with `numpy` arrays with `dtype=object`, rather than standard lists. This allows us to retain the reshaping, stackin and indexing functionality of those math libraries. In signatures, those are often annotated with the `NpArray` type annotation.
