@@ -206,6 +206,7 @@ for e, chunk in enumerate(train_chunk_iter):
         for sample in stats.flat:
             logger.add_scalars(sample, prefix='train')
 
+        # first epoch can be cut short after args.warmup optimization steps
         if e == 0 and i == args.warmup:
             break
 
@@ -218,16 +219,25 @@ for e, chunk in enumerate(train_chunk_iter):
         bitmaps, images = batch.to(DEV, non_blocking=True)
         bitmaps_ = bitmaps.reshape(-1, *bitmaps.shape[2:])
         with torch.no_grad():
+            # at validation we use NMS extraction...
             features_ = disk.features(bitmaps_, kind='nms')
             features = features_.reshape(*bitmaps.shape[:2])
 
+            # ...and nearest-neighbor matching
             matches = valtime_matcher.match_pairwise(features)
             d_stats = disc_quality_metric(images, matches)
             p_stats = pose_quality_metric(images, matches)
 
             for d_stat in d_stats.flat:
+                # those are metrics similar to the ones used at training time:
+                # number of true/false positives, etc. They are called
+                # `discrete` because I compute them after actually performing
+                # mutual nearest neighbor (cycle consistent) matching, rather
+                # than report the expectations, as I do at trianing time
                 logger.add_scalars(d_stat, prefix='test/discrete')
             for p_stat in p_stats.flat:
+                # those are metrics related to camera pose estimation: error in
+                # camera rotation and translation
                 logger.add_scalars(p_stat, prefix='test/pose')
 
         del bitmaps, images, features
