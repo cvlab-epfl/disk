@@ -9,12 +9,14 @@ from torch_dimcheck import dimchecked
 from disk import DISK, Features
 
 parser = argparse.ArgumentParser(description=(
-"Script for detection and description (but not matching) of keypoints. "
-"It processes all images with extension given by `--image-extension` found "
-"in `image-path` directory. Images are resized to `--height` x `--width` "
-"for internal processing (padding them if necessary) and the output "
-"coordinates are then transformed back to original image size."
-))
+    "Script for detection and description (but not matching) of keypoints. "
+    "It processes all images with extension given by `--image-extension` found "
+    "in `image-path` directory. Images are resized to `--height` x `--width` "
+    "for internal processing (padding them if necessary) and the output "
+    "coordinates are then transformed back to original image size."),
+
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
 parser.add_argument(
     '--height', default=None, type=int,
     help='rescaled height (px). If unspecified, image is not resized in height dimension'
@@ -40,7 +42,11 @@ parser.add_argument(
     '--desc-dim', type=int, default=128,
     help='descriptor dimension. Needs to match the checkpoint value.'
 )
-parser.add_argument('--mode', choices=['nms', 'rng'], default='nms')
+parser.add_argument(
+    '--mode', choices=['nms', 'rng'], default='nms',
+    help=('Whether to extract features using the non-maxima suppresion mode or '
+          'through training-time grid sampling technique')
+)
 
 default_model_path = os.path.split(os.path.abspath(__file__))[0] + '/depth-save.pth'
 parser.add_argument(

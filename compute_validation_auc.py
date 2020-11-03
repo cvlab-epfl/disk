@@ -45,12 +45,15 @@ def calculate_auc(Δ_θ, Δ_T, length):
 
     return np.array(aucs)
 
-parser = argparse.ArgumentParser(description=(
-'This script is used for evaluating the validation time stereo pose estimation'
-' AUC in order to pick the best checkpoint for IMW2020 challenge submission. '
-'It reads the tensorboard logfiles, picks the pose estimation errors, groups '
-'them by epoch and calculates AUC for each epoch.'
-))
+parser = argparse.ArgumentParser(
+    description=('This script is used for evaluating the validation time '
+                 'stereo pose estimation AUC in order to pick the best '
+                 'checkpoint for IMW2020 challenge submission. It reads the '
+                 'tensorboard logfiles, picks the pose estimation errors, '
+                 'groups them by epoch and calculates AUC for each epoch.'),
+
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
 parser.add_argument(
     '--validation-length', type=int, default=750,
     help=('The number of image pairs evaluated at each epoch. Unfortunately, '

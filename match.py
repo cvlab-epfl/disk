@@ -6,21 +6,53 @@ from torch_dimcheck import dimchecked
 
 from disk.geom import distance_matrix
 
-MAX_FULL_MATRIX = 36000**2
+MAX_FULL_MATRIX = 10000**2
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('h5_path')
-    parser.add_argument('--f16', action='store_true')
-    parser.add_argument('--u16', action='store_true')
-    parser.add_argument('--rt', type=float, default=None)
-    parser.add_argument('--save-threshold', type=float, default=-float('inf'))
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        'h5_path',
+        help=('Path to the .h5 artifacts directory (containing descriptors.h5 '
+              'and keypoints.h5)')
+    )
+    parser.add_argument(
+        '--f16', action='store_true',
+        help=('Compute distance matrices in half precision (offers a '
+              'substantial speedup with Turing and later GPUs).')
+    )
+    parser.add_argument(
+        '--u16', action='store_true',
+        help=('Store matches with as uin16. This won\'t work if you have '
+              'more than ~65k features in an image, but otherwise saves '
+              'disk space.')
+    )
+    parser.add_argument(
+        '--rt', type=float, default=None,
+        help='Ratio test value. Leave unspecified to perform no ratio test'
+    )
+    parser.add_argument(
+        '--save-threshold', type=float, default=-float('inf'),
+        help=('Don\'t save matches between a pair of images if less than '
+              '--save-threshold were found.')
+    )
+    parser.add_argument(
+        '--max-full-matrix', type=int, default=10000**2,
+        help=('this is the biggest match matrix that will attempt to be '
+              'computed allocated in memory. Matrices bigger than that will '
+              'be split into chunks of at most this size. Reduce if your '
+              'script runs out of memory.')
+    )
 
     args = parser.parse_args()
     args.rt = args.rt if args.rt is not None else 1.
 
+    MAX_FULL_MATRIX = args.max_full_matrix
+
     DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Processing {args.h5_path} with DEV={DEV}')
+
 
 class H5Store:
     def __init__(self, path, dtype=torch.float32):

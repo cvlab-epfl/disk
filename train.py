@@ -7,7 +7,9 @@ from disk.model import DISK, ConsistentMatcher, CycleMatcher
 from disk.loss import Reinforce, DepthReward, EpipolarReward, \
                       PoseQuality, DiscreteMetric
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
 parser.add_argument(
     'data_path', type=str,
     help=('Path to the datasets. This should point to the location with '

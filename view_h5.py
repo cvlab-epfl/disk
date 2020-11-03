@@ -5,12 +5,26 @@ import torch.nn.functional as F
 
 from disk.common.vis import MultiFigure
 
-parser = argparse.ArgumentParser()
-parser.add_argument('h5_path')
-parser.add_argument('image_path')
-parser.add_argument('--image-extension', default='jpg', type=str)
-parser.add_argument('--save', default=None, type=str)
-parser.add_argument('mode', choices=['keypoints', 'matches'])
+parser = argparse.ArgumentParser(
+    description='Script for viewing the keypoints.h5 and matches.h5 contents',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('h5_path', help='Path to .h5 artifacts')
+parser.add_argument('image_path', help='Path to corresponding images')
+parser.add_argument(
+    '--image-extension', default='jpg', type=str,
+    help='Extension of the images'
+)
+parser.add_argument(
+    '--save', default=None, type=str,
+    help=('If give a path, saves the visualizations rather than displaying '
+          'them interactively')
+)
+parser.add_argument(
+    'mode', choices=['keypoints', 'matches'],
+    help=('Whether to dispay the keypoints (in a single image) or matches '
+          '(across pairs)')
+)
 
 args = parser.parse_args()
 
