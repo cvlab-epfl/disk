@@ -7,8 +7,9 @@ Official code release for [DISK: learning local features with policy gradient](h
 ```latex
 @article{tyszkiewicz2020disk,
   title={DISK: Learning local features with policy gradient},
-  author={Tyszkiewicz, Micha{\l} J and Fua, Pascal and Trulls, Eduard},
-  journal={arXiv preprint arXiv:2006.13566},
+  author={Tyszkiewicz, Micha{\l} and Fua, Pascal and Trulls, Eduard},
+  journal={Advances in Neural Information Processing Systems},
+  volume={33},
   year={2020}
 }
 ```
