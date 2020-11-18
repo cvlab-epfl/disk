@@ -83,13 +83,13 @@ if __name__ == '__main__':
     cameras, images, points3D = read_model(sparse_path, ext='.bin')
 
     os.makedirs(calib_path, exist_ok=True)
-    os.makedirs(depth_dst_path, exist_ok=True)
 
     print('Creating calibration files...')
     for image in tqdm(images.values()):
         create_calibration(image, cameras[image.camera_id], calib_path) 
 
     if not args.no_depth:
+        os.makedirs(depth_dst_path, exist_ok=True)
         print('Converting depth...')
         for image in tqdm(images.values()):
             convert_depth(image.name, depth_src_path, depth_dst_path)
