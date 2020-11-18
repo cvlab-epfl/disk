@@ -62,6 +62,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str)
     parser.add_argument('--name', type=str, default='default-scene')
+    parser.add_argument('--no-depth', action='store_true')
 
     args = parser.parse_args()
 
@@ -69,10 +70,15 @@ if __name__ == '__main__':
 
     image_path     = os.path.join(args.path, 'images')
     sparse_path    = os.path.join(args.path, 'sparse')
-    depth_src_path = os.path.join(args.path, 'stereo', 'depth_maps')
     calib_path     = os.path.join(args.path, 'dataset', 'calibration')
-    depth_dst_path = os.path.join(args.path, 'dataset', 'depth')
     json_path      = os.path.join(args.path, 'dataset', 'dataset.json')
+
+    if not args.no_depth:
+        depth_src_path = os.path.join(args.path, 'stereo', 'depth_maps')
+        depth_dst_path = os.path.join(args.path, 'dataset', 'depth')
+    else:
+        depth_src_path = ''
+        depth_dst_path = ''
 
     cameras, images, points3D = read_model(sparse_path, ext='.bin')
 
@@ -83,9 +89,12 @@ if __name__ == '__main__':
     for image in tqdm(images.values()):
         create_calibration(image, cameras[image.camera_id], calib_path) 
 
-    print('Converting depth...')
-    for image in tqdm(images.values()):
-        convert_depth(image.name, depth_src_path, depth_dst_path)
+    if not args.no_depth:
+        print('Converting depth...')
+        for image in tqdm(images.values()):
+            convert_depth(image.name, depth_src_path, depth_dst_path)
+    else:
+        print('Skipping depth maps...')
 
     dataset = {
         'scenes': {
