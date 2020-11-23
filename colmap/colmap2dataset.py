@@ -6,6 +6,9 @@ from colmap.read_model import read_model
 from colmap.read_dense import read_array
 
 def convert_depth(name, src_path, dst_path):
+    '''
+    Converts depth from the COLMAP format of .bin files to h5py HDF files
+    '''
     fname, ext = os.path.splitext(name)
 
     depth_src_name = f'{name}.geometric.bin'
@@ -17,6 +20,10 @@ def convert_depth(name, src_path, dst_path):
         dst_file.create_dataset('depth', data=depth.astype(np.float16))
 
 def camera_to_K(camera):
+    '''
+    Assembles the camera params (given as an unstructured list by COLMAP) into
+    an intrinsics matrix
+    '''
     assert camera.model == 'PINHOLE'
 
     fx, fy, cx, cy = camera.params
@@ -28,6 +35,9 @@ def camera_to_K(camera):
     ], dtype=np.float32)
 
 def create_calibration(image, camera, prefix):
+    '''
+    Saves camera intrinsics and extrinsics to a HDF file
+    '''
     path = os.path.join(prefix, f'calibration_{image.name}.h5') 
 
     with h5py.File(path, 'w') as dst_file:
@@ -36,6 +46,13 @@ def create_calibration(image, camera, prefix):
         dst_file.create_dataset('K', data=camera_to_K(camera))
 
 def covisible_pairs(images, low=0.5, high=0.8):
+    '''
+    Considers all pairs of images and for each, it computes the ratio between
+    3d landmarks co-visible in both images and the minimum of the number
+    of 3d landmarks in either of the two images. This serves as a proxy for
+    image covisiblity and pairs with the ratio between `low` and `high` are
+    returned.
+    '''
     images = list(images.values())
 
     idxs = []
@@ -57,6 +74,39 @@ def covisible_pairs(images, low=0.5, high=0.8):
                 pairs.append((images[i].name, images[j].name)) 
 
     return pairs
+
+def encode_pairs(pairs):
+    '''
+    "Encodes" the list of pairs, coming as a list of file names such as
+    [
+        ['file_name_1.jpg', 'file_name_5.jpg'],
+        ['file_name_1.jpg', 'file_name_13.jpg'],
+        ...
+    ]
+    by assigning each filename a unique numeric ID and returning
+    1) a list `id2name` such that id2name[i] is the filename of the i-th image
+    2) a list of lists of the same structure as the input argument, except
+       using file IDs instead of full (string) names
+    '''
+    curr_id = 0
+    name2id = {}
+    id2name = []
+
+    for pair in pairs:
+        for name in pair:
+            if name in name2id:
+                continue
+            else:
+                name2id[name] = curr_id
+                id2name.append(name)
+                curr_id += 1
+
+    pairs_as_ixs = []
+    for pair in pairs:
+        pair = [name2id[n] for n in pair]
+        pairs_as_ixs.append(pair)
+
+    return id2name, pairs_as_ixs
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -96,17 +146,15 @@ if __name__ == '__main__':
     else:
         print('Skipping depth maps...')
 
+    images, tuples = encode_pairs(covisible_pairs(images))
+
     dataset = {
-        'scenes': {
-            args.name: {
-                'pairs': covisible_pairs(images),
-                'pose_path': calib_path,
-                'depth_path': depth_dst_path,
-                'image_path': image_path,
-            },
-        },
-        'subsets': {
-            'train': [args.name],
+        args.name: {
+            'images'    : images,
+            'tuples'    : tuples,
+            'calib_path': calib_path,
+            'depth_path': depth_dst_path,
+            'image_path': image_path,
         },
     }
 
