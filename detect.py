@@ -8,68 +8,6 @@ from torch_dimcheck import dimchecked
 
 from disk import DISK, Features
 
-parser = argparse.ArgumentParser(description=(
-    "Script for detection and description (but not matching) of keypoints. "
-    "It processes all images with extension given by `--image-extension` found "
-    "in `image-path` directory. Images are resized to `--height` x `--width` "
-    "for internal processing (padding them if necessary) and the output "
-    "coordinates are then transformed back to original image size."),
-
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter
-)
-parser.add_argument(
-    '--height', default=None, type=int,
-    help='rescaled height (px). If unspecified, image is not resized in height dimension'
-)
-parser.add_argument(
-    '--width', default=None, type=int,
-    help='rescaled width (px). If unspecified, image is not resized in width dimension'
-)
-parser.add_argument(
-    '--image-extension', default='jpg', type=str,
-    help='This script ill process all files which match `image-path/*.{--image-extension}`'
-)
-parser.add_argument(
-    '--f16', action='store_true',
-    help='Store descriptors in fp16 (half precision) format'
-)
-parser.add_argument('--window', type=int, default=5, help='NMS window size')
-parser.add_argument(
-    '--n', type=int, default=None,
-    help='Maximum number of features to extract. If unspecified, the number is not limited'
-)
-parser.add_argument(
-    '--desc-dim', type=int, default=128,
-    help='descriptor dimension. Needs to match the checkpoint value.'
-)
-parser.add_argument(
-    '--mode', choices=['nms', 'rng'], default='nms',
-    help=('Whether to extract features using the non-maxima suppresion mode or '
-          'through training-time grid sampling technique')
-)
-
-default_model_path = os.path.split(os.path.abspath(__file__))[0] + '/depth-save.pth'
-parser.add_argument(
-    '--model_path', type=str, default=default_model_path,
-    help="Path to the model's .pth save file"
-)
-parser.add_argument('--detection-scores', action='store_true')
-
-parser.add_argument(
-    'h5_path',
-    help=("Directory where keypoints.h5 and descriptors.h5 will be stored. This"
-          " will be created if it doesn't already exist.")
-)
-parser.add_argument(
-    'image_path',
-    help="Directory with images to be processed."
-)
-
-args = parser.parse_args()
-
-DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-CPU   = torch.device('cpu')
-
 class Image:
     def __init__(self, bitmap: ['C', 'H', 'W'], fname: str, orig_shape=None):
         self.bitmap     = bitmap
@@ -229,21 +167,79 @@ def extract(dataset, save_path):
                 score_h5.create_dataset(image.fname, data=scores)
 
             pbar.set_postfix(n=keypoints.shape[0])
-
-dataset = SceneDataset(args.image_path, crop_size=(args.height, args.width))
-
-state_dict = torch.load(args.model_path, map_location='cpu')
-
-# compatibility with older model saves which used the 'extractor' name
-if 'extractor' in state_dict:
-    weights = state_dict['extractor']
-elif 'disk' in state_dict:
-    weights = state_dict['disk']
-else:
-    raise KeyError('Incompatible weight file!')
-
-model = DISK(window=8, desc_dim=args.desc_dim)
-model.load_state_dict(weights)
-model = model.to(DEV)
-
-described_samples = extract(dataset, args.h5_path)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=(
+        "Script for detection and description (but not matching) of keypoints. "
+        "It processes all images with extension given by `--image-extension` found "
+        "in `image-path` directory. Images are resized to `--height` x `--width` "
+        "for internal processing (padding them if necessary) and the output "
+        "coordinates are then transformed back to original image size."),
+    
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        '--height', default=None, type=int,
+        help='rescaled height (px). If unspecified, image is not resized in height dimension'
+    )
+    parser.add_argument(
+        '--width', default=None, type=int,
+        help='rescaled width (px). If unspecified, image is not resized in width dimension'
+    )
+    parser.add_argument(
+        '--image-extension', default='jpg', type=str,
+        help='This script ill process all files which match `image-path/*.{--image-extension}`'
+    )
+    parser.add_argument(
+        '--f16', action='store_true',
+        help='Store descriptors in fp16 (half precision) format'
+    )
+    parser.add_argument('--window', type=int, default=5, help='NMS window size')
+    parser.add_argument(
+        '--n', type=int, default=None,
+        help='Maximum number of features to extract. If unspecified, the number is not limited'
+    )
+    parser.add_argument(
+        '--desc-dim', type=int, default=128,
+        help='descriptor dimension. Needs to match the checkpoint value.'
+    )
+    parser.add_argument(
+        '--mode', choices=['nms', 'rng'], default='nms',
+        help=('Whether to extract features using the non-maxima suppresion mode or '
+              'through training-time grid sampling technique')
+    )
+    
+    default_model_path = os.path.split(os.path.abspath(__file__))[0] + '/depth-save.pth'
+    parser.add_argument(
+         '--model_path', type=str, default=default_model_path,
+        help="Path to the model's .pth save file"
+    )
+    parser.add_argument('--detection-scores', action='store_true')
+    
+    parser.add_argument(
+        'h5_path',
+        help=("Directory where keypoints.h5 and descriptors.h5 will be stored. This"
+              " will be created if it doesn't already exist.")
+    )
+    parser.add_argument(
+        'image_path',
+        help="Directory with images to be processed."
+    )
+    args = parser.parse_args()
+    DEV   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    CPU   = torch.device('cpu')
+    dataset = SceneDataset(args.image_path, crop_size=(args.height, args.width))
+    
+    state_dict = torch.load(args.model_path, map_location='cpu')
+    
+    # compatibility with older model saves which used the 'extractor' name
+    if 'extractor' in state_dict:
+        weights = state_dict['extractor']
+    elif 'disk' in state_dict:
+        weights = state_dict['disk']
+    else:
+        raise KeyError('Incompatible weight file!')
+    model = DISK(window=8, desc_dim=args.desc_dim)
+    model.load_state_dict(weights)
+    model = model.to(DEV)
+    
+    described_samples = extract(dataset, args.h5_path)
