@@ -198,7 +198,19 @@ def extract(dataset, save_path):
         bitmaps = bitmaps.to(DEV, non_blocking=True)
 
         with torch.no_grad():
-            batched_features = extract(bitmaps)
+            try:
+                batched_features = extract(bitmaps)
+            except RuntimeError as e:
+                if 'U-Net failed' in str(e):
+                    msg = ('Please use input size which is multiple of 16 (or '
+                           'adjust the --height and --width flags to let this '
+                           'script rescale it automatically). This is because '
+                           'we internally use a U-Net with 4 downsampling '
+                           'steps, each by a factor of 2, therefore 2^4=16.')
+
+                    raise RuntimeError(msg) from e
+                else:
+                    raise
 
         for features, image in zip(batched_features.flat, images):
             features = features.to(CPU)

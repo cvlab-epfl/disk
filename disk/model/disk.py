@@ -54,7 +54,17 @@ class DISK(torch.nn.Module):
         '''
 
         B = images.shape[0]
-        descriptors, heatmaps = self._split(self.unet(images))
+        try:
+            descriptors, heatmaps = self._split(self.unet(images))
+        except RuntimeError as e:
+            if 'Trying to downsample' in str(e):
+                msg = ('U-Net failed because the input is of wrong shape. With '
+                       'a n-step U-Net (n == 4 by default), input images have '
+                       'to have height and width as multiples of 2^n (16 by '
+                       'default).')
+                raise RuntimeError(msg) from e
+            else:
+                raise
 
         keypoints = {
             'rng': self.detector.sample,
