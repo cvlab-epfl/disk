@@ -86,6 +86,8 @@ The data we used for training and validation can be downloaded by executing the 
 
 The paper results (available as `depth-save.pth`, the default checkpoint in `detect.py`) were obtained through an ad-hoc schedule of annealing θ_M between 15 and 25 over 10 epochs and then training for further 40 epochs. We picked the best checkpoint obtained this way (39th) and fine-tuned it with a schedule of `θ_M=25+epoch_number`, for another 50 epochs, obtaining the best model at 20th epoch (`θ_M=45`). We default to the currently presented mode of training for simplicity, while disclosing the original process.
 
+As people often request this, we have uploaded the cached results for the MMA metric on HPatches (Figure 5 in the NeurIPS paper) to this repository: they are available on the `results/hpatches` folder. You can read them with [this notebook](https://github.com/mihaidusmanu/d2-net/blob/master/hpatches_sequences/HPatches-Sequences-Matching-Benchmark.ipynb), similarly to the cached results provided by that repository.
+
 #### Low GPU memory training
 We performed our experiments with 32GB version of Nvidia V100 GPUs. However, running `python train.py --substep 2 --batch-size 1 --chunk-size 10000 --warmup 500` should be functionally equivalent with that setup and fit within 11/12gb GPUs (note that training in this mode may take on the order of 2 weeks!).
 
