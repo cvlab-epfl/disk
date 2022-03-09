@@ -9,7 +9,7 @@ from disk import Features, NpArray
 from disk.model.nms import nms
 
 @dimchecked
-def select_on_last(values: [..., 'T'], indices: [...]) -> [...]:
+def select_on_last(values: 'B* T', indices: 'B*') -> 'B*':
     '''
     WARNING: this may be reinventing the wheel, but I don't know how to do
     it otherwise with PyTorch.
@@ -26,8 +26,8 @@ def select_on_last(values: [..., 'T'], indices: [...]) -> [...]:
 
 @dimchecked
 def point_distribution(
-    logits: [..., 'T']
-) -> ([...], [...], [...]):
+    logits: 'B* T',
+) -> ('B*', 'B*', 'B*'):
     '''
     Implements the categorical proposal -> Bernoulli acceptance sampling
     scheme. Given a tensor of logits, performs samples on the last dimension,
@@ -60,12 +60,12 @@ class Keypoints:
     '''
 
     @dimchecked
-    def __init__(self, xys: ['N', 2], logp: ['N']):
+    def __init__(self, xys: 'N 2', logp: 'N'):
         self.xys  = xys
         self.logp = logp
 
     @dimchecked
-    def merge_with_descriptors(self, descriptors: ['C', 'H', 'W']) -> Features:
+    def merge_with_descriptors(self, descriptors: 'C H W') -> Features:
         '''
         Select descriptors from a dense `descriptors` tensor, at locations
         given by `self.xys`
@@ -82,7 +82,7 @@ class Detector:
         self.window = window
 
     @dimchecked
-    def _tile(self, heatmap: ['B', 'C', 'H', 'W']) -> ['B', 'C', 'h', 'w', 'T']:
+    def _tile(self, heatmap: 'B C H W') -> 'B C h w T':
         '''
         Divides the heatmap `heatmap` into tiles of size (v, v) where
         v==self.window. The tiles are flattened, resulting in the last
@@ -99,7 +99,7 @@ class Detector:
                       .reshape(b, c, h // v, w // v, v*v)
 
     @dimchecked
-    def sample(self, heatmap: ['B', 1, 'H', 'W']) -> NpArray[Keypoints]:
+    def sample(self, heatmap: 'B 1 H W') -> NpArray[Keypoints]:
         '''
             Implements the training-time grid-based sampling protocol
         '''
@@ -144,7 +144,7 @@ class Detector:
     @dimchecked
     def nms(
         self,
-        heatmap: ['B', 1, 'H', 'W'],
+        heatmap: 'B 1 H W',
         n=None,
         **kwargs
     ) -> NpArray[Keypoints]:

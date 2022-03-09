@@ -29,8 +29,10 @@ class DISK(torch.nn.Module):
         self.detector = Detector(window=window)
 
     @dimchecked
-    def _split(self, unet_output: ['B', 'C', 'H', 'W']) \
-                -> (['B', 'C-1', 'H', 'W'], ['B', 1, 'H', 'W']):
+    def _split(
+        self,
+        unet_output: 'B C H W',
+    ) -> ('B c H W', 'B 1 H W'):
         '''
         Splits the raw Unet output into descriptors and detection heatmap.
         '''
@@ -44,7 +46,7 @@ class DISK(torch.nn.Module):
     @dimchecked
     def features(
         self,
-        images: ['B', 'C', 'H', 'W'],
+        images: 'B C H W',
         kind='rng',
         **kwargs
     ) -> NpArray[Features]:

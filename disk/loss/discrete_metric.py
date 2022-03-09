@@ -6,7 +6,7 @@ from disk import MatchedPairs, Image, NpArray
 from disk.geom.epi import p_asymmdist_from_imgs
 
 @dimchecked
-def classify_pairs(kps1: ['N', 2], kps2: ['N', 2], img1: Image, img2: Image, th):
+def classify_pairs(kps1: 'N 2', kps2: 'N 2', img1: Image, img2: Image, th) -> 'N':
     '''
     classifies keypoint pairs as either possible or impossible under
     epipolar constraints

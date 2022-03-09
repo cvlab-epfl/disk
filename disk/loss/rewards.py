@@ -13,11 +13,11 @@ class EpipolarReward:
     @dimchecked
     def __call__(
         self,
-        kps1: ['N', 2],
-        kps2: ['M', 2],
+        kps1: 'N 2',
+        kps2: 'M 2',
         img1: Image,
         img2: Image
-    ) -> ['N', 'M']:
+    ) -> 'N M':
         '''
         assigns all pairs of keypoints across (kps1, kps2) a reward depending
         if the are correct or incorrect under epipolar constraints
@@ -28,11 +28,11 @@ class EpipolarReward:
     @dimchecked
     def classify(
         self,
-        kps1: ['N', 2],
-        kps2: ['M', 2],
+        kps1: 'N 2',
+        kps2: 'M 2',
         img1: Image,
         img2: Image,
-    ) -> ['N', 'M']:
+    ) -> 'N M':
         '''
         classifies all pairs of keypoints across (kps1, kps2) as correct or
         incorrect depending on epipolar error
@@ -56,11 +56,11 @@ class DepthReward:
     @dimchecked
     def __call__(
         self,
-        kps1: ['N', 2],
-        kps2: ['M', 2],
+        kps1: 'N 2',
+        kps2: 'M 2',
         img1: Image,
         img2: Image
-    ) -> ['N', 'M']:
+    ) -> 'N M':
         '''
         classifies all (kp1, kp2) pairs as either
         * correct  : within dist_α in reprojection

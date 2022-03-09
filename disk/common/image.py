@@ -1,11 +1,12 @@
 import torch, math, warnings, imageio
+from typing import Optional
 import torch.nn.functional as F
 import numpy as np
 
-from torch_dimcheck import dimchecked
+from torch_dimcheck import dimchecked, A
 
 @dimchecked
-def _rescale(tensor: ['C', 'H', 'W'], size) -> ['C', 'h', 'w']:
+def _rescale(tensor: 'C H W', size) -> 'C h w':
     return F.interpolate(
         tensor.unsqueeze(0),
         size=size,
@@ -14,7 +15,7 @@ def _rescale(tensor: ['C', 'H', 'W'], size) -> ['C', 'h', 'w']:
     ).squeeze(0)
 
 @dimchecked
-def _pad(tensor: ['C', 'H', 'W'], size, value=0.):
+def _pad(tensor: 'C H W', size, value=0.):
     xpad = size[1] - tensor.shape[2]
     ypad = size[0] - tensor.shape[1]
 
@@ -33,11 +34,11 @@ class Image:
     @dimchecked
     def __init__(
         self,
-        K     : [3, 3],
-        R     : [3, 3],
-        T     : [3],
-        bitmap: [3, 'H', 'W'],
-        depth, #[1, 'H', 'W'],
+        K     : '3 3',
+        R     : '3 3',
+        T     : '3',
+        bitmap: '3 H W',
+        depth : Optional[A['1 H W']],
         bitmap_path: str
     ):
         self.K = K
@@ -116,7 +117,7 @@ class Image:
         return self
 
     @dimchecked
-    def unproject(self, xy: [2, 'N']) -> [3, 'N']:
+    def unproject(self, xy: '2 N') -> '3 N':
         depth = self.fetch_depth(xy)
 
         xyw = torch.cat([
@@ -130,20 +131,20 @@ class Image:
         return xyz_w
 
     @dimchecked
-    def project(self, xyw: [3, 'N']) -> [2, 'N']:
+    def project(self, xyw: '3 N') -> '2 N':
         extrinsic = self.R @ xyw + self.T[:, None]
         intrinsic = self.K @ extrinsic
         return intrinsic[:2] / intrinsic[2]
 
     @dimchecked
-    def in_range_mask(self, xy: [2, 'N']) -> ['N']:
+    def in_range_mask(self, xy: '2 N') -> 'N':
         h, w = self.shape
         x, y = xy
 
         return (0 <= x) & (x < w) & (0 <= y) & (y < h)
 
     @dimchecked
-    def fetch_depth(self, xy: [2, 'N']) -> ['N']:
+    def fetch_depth(self, xy: '2 N') -> 'N':
         if self.depth is None:
             raise ValueError(f'Depth is not loaded')
 

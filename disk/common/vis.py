@@ -12,8 +12,8 @@ class MultiFigure:
     @dimchecked
     def __init__(
         self,
-        image1: ['H', 'W', 'C'],
-        image2: ['H', 'W', 'C'],
+        image1: 'H W C',
+        image2: 'H W C',
         grid=None,
         vertical=False,
     ):
@@ -56,8 +56,8 @@ class MultiFigure:
     @dimchecked
     def mark_xy(
         self,
-        xy1: [2, 'N'],
-        xy2: [2, 'N'],
+        xy1: '2 N',
+        xy2: '2 N',
         color='green',
         lines=True,
         marks=True,

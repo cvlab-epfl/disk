@@ -99,7 +99,7 @@ def _normalized_cosine_error(v1: ['N'], v2: ['N']):
     return err
 
 @dimchecked
-def matrix_to_quaternion(M: [3, 3]) -> [4]:
+def matrix_to_quaternion(M: '3 3') -> '4':
     '''
     adapted from
     https://github.com/vcg-uvic/sfm_benchmark/blob/2b28c76635f754cbc32f30571adf80f3eba13f4c/utils/eval_helper.py#L170

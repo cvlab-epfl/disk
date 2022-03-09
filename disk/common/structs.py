@@ -18,7 +18,7 @@ else:
 
 class Features:
     @dimchecked
-    def __init__(self, kp: ['N', 2], desc: ['N', 'F'], kp_logp: ['N']):
+    def __init__(self, kp: 'N 2', desc: 'N F', kp_logp: 'N'):
         assert kp.device == desc.device
         assert kp.device == kp_logp.device
 
@@ -96,7 +96,7 @@ class MatchDistribution(abc.ABC):
 
 class MatchedPairs:
     @dimchecked
-    def __init__(self, kps1: ['N', 2], kps2: ['M', 2], matches: [2, 'K']):
+    def __init__(self, kps1: 'N 2', kps2: 'M 2', matches: '2 K'):
         self.kps1    = kps1
         self.kps2    = kps2
         self.matches = matches

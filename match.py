@@ -84,14 +84,14 @@ def pair_key(key_1, key_2):
         raise ValueError(f'Equal keys {key_1}, {key_2}')
 
 @dimchecked
-def _binary_to_index(binary_mask: ['N'], ix2: ['M']) -> [2, 'M']:
+def _binary_to_index(binary_mask: 'N', ix2: 'M') -> '2 M':
     return torch.stack([
         torch.nonzero(binary_mask, as_tuple=False)[:, 0],
         ix2
     ], dim=0)
 
 @dimchecked
-def _ratio_one_way(dist_m: ['N', 'M'], rt) -> [2, 'K']:
+def _ratio_one_way(dist_m: 'N M', rt) -> '2 K':
     val, ix = torch.topk(dist_m, k=2, dim=1, largest=False)
     ratio = val[:, 0] / val[:, 1]
     passed_test = ratio < rt
@@ -100,7 +100,7 @@ def _ratio_one_way(dist_m: ['N', 'M'], rt) -> [2, 'K']:
     return _binary_to_index(passed_test, ix2)
 
 @dimchecked
-def _match_chunkwise(ds1: ['N', 'F'], ds2: ['M', 'F'], rt) -> [2, 'K']:
+def _match_chunkwise(ds1: 'N F', ds2: 'M F', rt) -> '2 K':
     chunk_size = MAX_FULL_MATRIX // ds1.shape[0]
     matches = []
     start = 0
@@ -116,7 +116,7 @@ def _match_chunkwise(ds1: ['N', 'F'], ds2: ['M', 'F'], rt) -> [2, 'K']:
     return torch.cat(matches, dim=1)
     
 @dimchecked
-def _match(ds1: ['N', 'F'], ds2: ['M', 'F'], rt) -> [2, 'K']:
+def _match(ds1: 'N F', ds2: 'M F', rt) -> '2 K':
     size = ds1.shape[0] * ds2.shape[0]
 
     fwd = _match_chunkwise(ds1, ds2, rt)
@@ -178,7 +178,7 @@ class MatcherWrapper:
                 self._cycle_matcher = CycleRatioMatcher(args.rt)
 
         @dimchecked
-        def raw_mle_match_pair(self, ds1: ['N', 'F'], ds2: ['M', 'F']) -> [2, 'K']:
+        def raw_mle_match_pair(self, ds1: 'N F', ds2: 'M F') -> '2 K':
             dist = distance_matrix(ds1, ds2, normalized=True)
             return self._cycle_matcher(dist)
 

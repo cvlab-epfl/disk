@@ -9,7 +9,8 @@ from torch_dimcheck import dimchecked
 from disk import DISK, Features
 
 class Image:
-    def __init__(self, bitmap: ['C', 'H', 'W'], fname: str, orig_shape=None):
+    @dimchecked
+    def __init__(self, bitmap: 'C H W', fname: str, orig_shape=None):
         self.bitmap     = bitmap
         self.fname      = fname
         if orig_shape is None:
@@ -25,7 +26,7 @@ class Image:
         )
 
     @dimchecked
-    def to_image_coord(self, xys: [2, 'N']) -> ([2, 'N'], ['N']):
+    def to_image_coord(self, xys: '2 N') -> ('2 N', 'N'):
         f, _size = self._compute_interpolation_size(self.bitmap.shape[1:])
         scaled = xys / f
 
@@ -50,7 +51,7 @@ class Image:
         return f, new_size
 
     @dimchecked
-    def _interpolate(self, image: ['C', 'H', 'W'], shape) -> ['C', 'h', 'w']:
+    def _interpolate(self, image: 'C H W', shape) -> 'C h w':
         _f, size = self._compute_interpolation_size(shape)
         return F.interpolate(
             image.unsqueeze(0),
@@ -60,7 +61,7 @@ class Image:
         ).squeeze(0)
     
     @dimchecked
-    def _pad(self, image: ['C', 'H', 'W'], shape) -> ['C', 'h', 'w']:
+    def _pad(self, image: 'C H W', shape) -> 'C h w':
         x_pad = shape[0] - image.shape[1]
         y_pad = shape[1] - image.shape[2]
 

@@ -1,7 +1,6 @@
 import torch, typing, cv2, sys
 import numpy as np
 import multiprocessing as mp
-from torch_dimcheck import dimchecked
 from typing import Dict
 
 from disk import MatchedPairs, Image, NpArray, EstimationFailedError
