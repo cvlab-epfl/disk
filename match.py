@@ -44,6 +44,8 @@ if __name__ == '__main__':
               'be split into chunks of at most this size. Reduce if your '
               'script runs out of memory.')
     )
+    parser.add_argument('--mode', choices=['brute', 'sequential'], default='brute')
+    parser.add_argument('--sequential-horizon', type=int, default=None)
 
     args = parser.parse_args()
     args.rt = args.rt if args.rt is not None else 1.
@@ -169,25 +171,43 @@ def brute_match(descriptors, hdf):
 
     pbar.close()
 
-class MatcherWrapper:
-    class InnerWrapper:
-        def __init__(self):
-            if args.rt is None:
-                self._cycle_matcher = CycleMatcher()
-            else:
-                self._cycle_matcher = CycleRatioMatcher(args.rt)
+def sequential_match(descriptors, hdf, horizon: int):
+    keys = list(descriptors.keys())
 
-        @dimchecked
-        def raw_mle_match_pair(self, ds1: 'N F', ds2: 'M F') -> '2 K':
-            dist = distance_matrix(ds1, ds2, normalized=True)
-            return self._cycle_matcher(dist)
+    saved = 0
+    pbar = tqdm(total=len(keys))
 
-    def __init__(self):
-        self.matcher = MatcherWrapper.InnerWrapper()
+    for i, key_1 in enumerate(keys):
+        desc_1 = descriptors[key_1].to(DEV)
+        group  = hdf.require_group(key_1)
+        for key_2 in keys[i+1:i+horizon+1]:
+            if key_2 in group.keys():
+                continue
+
+            desc_2 = descriptors[key_2].to(DEV)
+            
+            try:
+                matches = match(desc_1, desc_2, rt=args.rt, u16=args.u16)
+                n = matches.shape[1]
+
+                if n >= args.save_threshold:
+                    group.create_dataset(key_2, data=matches)
+                    saved += 1
+            except RuntimeError:
+                print('Error, skipping...')
+                n = 0
+
+            pbar.set_postfix(left=str(key_1), s=saved, n=n)
+        pbar.update(1)
+
+    pbar.close()
 
 if __name__ == '__main__':
     dtype = torch.float16 if args.f16 else torch.float32
     described_samples = H5Store(args.h5_path, dtype=dtype)
 
     with h5py.File(os.path.join(args.h5_path, 'matches.h5'), 'a') as hdf:
-        brute_match(described_samples, hdf)
+        if args.mode == 'brute':
+            brute_match(described_samples, hdf)
+        elif args.mode == 'sequential':
+            sequential_match(described_samples, hdf, args.sequential_horizon)
