@@ -92,7 +92,7 @@ As people often request this, we have uploaded the cached results for the MMA me
 We performed our experiments with 32GB version of Nvidia V100 GPUs. However, running `python train.py --substep 2 --batch-size 1 --chunk-size 10000 --warmup 500` should be functionally equivalent with that setup and fit within 11/12gb GPUs (note that training in this mode may take on the order of 2 weeks!).
 
 ### Custom data preparation
-Alternatively, one can use a custom dataset laid out in the proper format, as explained more in depth [here](https://github.com/jatentaki/disk/blob/release/disk/data/disk_dataset.py). We provide a script to automate that process in the case of photo collections posed with COLMAP.
+Alternatively, one can use a custom dataset laid out in the proper format, as explained more in depth [here](https://github.com/cvlab-epfl/disk/blob/master/disk/data/disk_dataset.py). We provide a script to automate that process in the case of photo collections posed with COLMAP.
 
 #### Creating new datasets by importing from COLMAP
 A new dataset (for instance with custom scenes) can be created by importing from COLMAP outputs. One should run COLMAP on the images, including steps of image rectification and patch match depth estimation. This should leave the user with a directory structured as
