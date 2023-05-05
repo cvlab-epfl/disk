@@ -217,10 +217,13 @@ for e, chunk in enumerate(train_chunk_iter):
     }, f'{args.save_dir}/save-{e}.pth')
 
     # validation loop
-    for i, batch in enumerate(tqdm(test_iter)):
-        bitmaps, images = batch.to(DEV, non_blocking=True)
-        bitmaps_ = bitmaps.reshape(-1, *bitmaps.shape[2:])
-        with torch.no_grad():
+    # pose_quality_metric uses a multiprocessing pool, so we need to use it
+    # inside a `with` block
+    with pose_quality_metric, torch.no_grad():
+        for i, batch in enumerate(tqdm(test_iter)):
+            bitmaps, images = batch.to(DEV, non_blocking=True)
+            bitmaps_ = bitmaps.reshape(-1, *bitmaps.shape[2:])
+
             # at validation we use NMS extraction...
             features_ = disk.features(bitmaps_, kind='nms')
             features = features_.reshape(*bitmaps.shape[:2])
@@ -242,6 +245,6 @@ for e, chunk in enumerate(train_chunk_iter):
                 # camera rotation and translation
                 logger.add_scalars(p_stat, prefix='test/pose')
 
-        del bitmaps, images, features
+            del bitmaps, images, features
 
 print('Finished')
