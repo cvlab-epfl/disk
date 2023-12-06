@@ -6,3 +6,5 @@ __pycache__
 *.jpg
 *.ipynb
 *.h5
+*.egg-info
+experiments

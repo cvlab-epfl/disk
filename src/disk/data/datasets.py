@@ -1,4 +1,5 @@
 import itertools, os
+import lightning.pytorch as pl
 from torch.utils.data import DataLoader
 
 from disk.data import DISKDataset
@@ -99,3 +100,58 @@ class DividedIter:
 
             for _ in range(self.n_chunks):
                 yield itertools.islice(base_iter, self.chunk_size)
+
+class DiskDataModule(pl.LightningDataModule):
+    def __init__(
+        self,
+        root: str,
+        no_depth: bool = False,
+        batch_size: int = 2,
+        crop_size: tuple[int, int] = (768, 768),
+        train_limit: int = 5000,
+        test_limit: int = 250,
+    ):
+        super().__init__()
+        self.root = root
+        self.no_depth = no_depth
+        self.batch_size = batch_size
+        self.crop_size = crop_size
+        self.test_limit = test_limit
+        self.train_limit = train_limit
+    
+    def setup(self, stage=None):
+        self.train_dataset = DISKDataset(
+            os.path.join(self.root, 'train/dataset.json'),
+            crop_size=self.crop_size,
+            limit=self.train_limit,
+            shuffle=True,
+            no_depth=self.no_depth,
+        )
+
+        self.test_dataset = DISKDataset(
+            os.path.join(self.root, 'test/dataset.json'),
+            crop_size=self.crop_size,
+            limit=self.test_limit,
+            shuffle=True,
+            no_depth=self.no_depth,
+        )
+
+        self.dataloader_kwargs = {
+            'collate_fn': self.train_dataset.collate_fn,
+            'pin_memory': True,
+            'num_workers': 8,
+            'batch_size': self.batch_size,
+        }
+
+    
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_dataset, shuffle=True,
+            **self.dataloader_kwargs
+        )
+    
+    def val_dataloader(self):
+        return DataLoader(
+            self.test_dataset, shuffle=False,
+            **self.dataloader_kwargs
+        )

@@ -75,32 +75,14 @@ class Job(typing.NamedTuple):
         return job().to_dict()
 
 class PoseQuality:
-    def __init__(self, ransac=Ransac(), dummy_pool=False, n_proc=6):
+    def __init__(self, ransac=Ransac()):
         self.ransac = ransac
-        self.pool = None
-        self.dummy_pool = dummy_pool
-        self.n_proc = n_proc
     
-    def __enter__(self):
-        if self.dummy_pool:
-            self.pool = mpd.Pool(processes=self.n_proc)
-        else:
-            self.pool = mp.Pool(processes=self.n_proc)
-        
-        return self
-    
-    def __exit__(self, *args):
-        self.pool.close()
-        self.pool = None
-
     def __call__(
         self,
         images: NpArray[Image],
         decisions: NpArray[MatchedPairs]
     )-> NpArray[Dict[str, float]]:
-        if self.pool is None:
-            raise RuntimeError('self.pool is not initialized. PoseQuality needs to be used inside a `with` block.')
-        
         N_scenes, N_per_scene = images.shape
 
         assert decisions.shape[0] == N_scenes
@@ -132,4 +114,4 @@ class PoseQuality:
 
                     i_decision += 1
 
-        return np.array(self.pool.map(Job.execute, jobs.flat)).reshape(*jobs.shape)
+        return np.array(list(map(Job.execute, jobs.flat))).reshape(*jobs.shape)
