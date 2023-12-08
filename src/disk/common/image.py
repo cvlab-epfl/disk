@@ -1,6 +1,8 @@
-import torch, math, warnings, imageio
+from __future__ import annotations
+import torch
 import torch.nn.functional as F
 import numpy as np
+import cv2
 
 from torch_dimcheck import dimchecked
 
@@ -100,6 +102,69 @@ class Image:
             depth = None
 
         return Image(self.K, self.R, self.T, bitmap, depth, self.bitmap_path)
+    
+    def crop(self, src_bbox: tuple[int, int, int, int], dst_size: tuple[int, int]) -> Image:
+        bitmap = self.bitmap.numpy()
+        src_w_min, src_h_min, src_w_max, src_h_max = src_bbox
+        dst_w_max, dst_h_max = dst_size
+        
+        src_square = np.array([[src_h_min, src_w_min], [src_h_max, src_w_min], [src_h_min, src_w_max], [src_h_max, src_w_max]], dtype=np.float32)
+        dst_square = np.array([[0, 0], [dst_h_max, 0], [0, dst_w_max], [dst_h_max, dst_w_max]], dtype=np.float32)
+
+        warp_mat = cv2.getPerspectiveTransform(src_square, dst_square)
+
+        new_bitmap = cv2.warpPerspective(bitmap.transpose(1, 2, 0), warp_mat, (dst_h_max, dst_w_max))
+        new_K = warp_mat.astype(np.float32) @ self.K.numpy()
+        
+        return Image(
+            K=torch.from_numpy(new_K),
+            R=self.R,
+            T=self.T,
+            bitmap=torch.from_numpy(new_bitmap).permute(2, 0, 1),
+            depth=self.depth,
+            bitmap_path=self.bitmap_path,
+        )
+
+    def center_crop(self, crop_size: tuple[int, int]) -> Image:
+        crop_corner = np.array(crop_size)
+        img_corner = np.array(self.bitmap.shape[1:])
+
+        ratio = (crop_corner / img_corner)
+        ratio = ratio.max()
+
+        img_h, img_w = crop_corner / ratio
+
+        delta_h = (img_corner[0] - img_h) // 2
+        delta_w = (img_corner[1] - img_w) // 2
+
+        return self.crop((delta_h, delta_w, img_h + delta_h, img_w + delta_w), crop_size)
+
+    def random_crop(self, crop_size: tuple[int, int]) -> Image:
+        crop_corner = np.array(crop_size)
+        img_corner = np.array(self.bitmap.shape[1:])
+
+        ratio = (crop_corner / img_corner)
+        ratio = ratio.max()
+
+        img_h, img_w = crop_corner / ratio
+
+        h_range = int(img_corner[0] - img_h)
+        w_range = int(img_corner[1] - img_w)
+
+        assert h_range >= 0 and w_range >= 0
+
+        if h_range == 0:
+            delta_h = 0
+        else:
+            delta_h = np.random.randint(0, h_range)
+        
+        if w_range == 0:
+            delta_w = 0
+        else:
+            delta_w = np.random.randint(0, w_range)
+
+        return self.crop((delta_h, delta_w, img_h + delta_h, img_w + delta_w), crop_size)
+
 
     def to(self, *args, **kwargs):
         # use getattr/setattr to avoid repetitive code.

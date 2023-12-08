@@ -22,4 +22,6 @@ dependencies = [
     "matplotlib",
     "numpy",
     "pytest",
+    "pydegensac",
+    "opencv-python-headless",
 ]
