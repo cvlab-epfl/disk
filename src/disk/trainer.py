@@ -11,6 +11,7 @@ from disk.loss import (
     PoseQuality,
     DiscreteMetric,
 )
+from disk.common.vis_kornia import visualize
 
 
 class DiskLearner(pl.LightningModule):
@@ -64,6 +65,15 @@ class DiskLearner(pl.LightningModule):
         for p_stat in p_stats.flat:
             for k, v in p_stat.items():
                 self.log(f"val/hardness-{dataloader_idx}/{k}", v)
+
+        if batch_idx == 0:
+            for i, (imgs, feats) in enumerate(zip(images, features)):
+                fig = visualize(feats, imgs)
+                self.logger.experiment.add_figure(
+                    f"val/hardness-{dataloader_idx}/vis-{i}",
+                    fig,
+                    global_step=self.global_step,
+                )
 
     def on_train_batch_start(self, *args, **kwargs) -> None:
         step = self.global_step
