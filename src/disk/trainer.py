@@ -8,8 +8,6 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 from disk.model import DISK, ConsistentMatcher, CycleMatcher
 from disk.loss import (
     Reinforce,
-    DepthReward,
-    EpipolarReward,
     PoseQuality,
     DiscreteMetric,
 )
@@ -31,7 +29,7 @@ class DiskLearner(pl.LightningModule):
         bitmaps, images = batch
         bitmaps_ = bitmaps.reshape(-1, *bitmaps.shape[2:])
         features_ = self.disk.features(bitmaps_, kind="rng")
-        features = features_.reshape(2, -1, *features_.shape[1:])
+        features = features_.reshape(*bitmaps.shape[:2])
 
         self.optimizers().zero_grad()
         stats = self.manual_backward(images, features, self.matcher)

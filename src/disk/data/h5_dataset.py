@@ -6,28 +6,32 @@ import h5py
 import numpy as np
 import imageio
 import lightning.pytorch as pl
+from torch.utils.data import Dataset, DataLoader, ConcatDataset, Sampler
 from torch import Tensor
 from tqdm.auto import tqdm
 
 from disk.common.image import Image
 from disk.data.disk_dataset import DISKDataset
 
-RANDOM_CROP_TRANSFORM = lambda image: image.random_crop((768, 768))
-CENTER_CROP_TRANSFORM = lambda image: image.center_crop((768, 768))
-DEFAULT_TRANSFORM = RANDOM_CROP_TRANSFORM
+Transform = Callable[[Image], Image]
+
+RANDOM_CROP_TRANSFORM: Transform = lambda image: image.random_crop((768, 768))
+CENTER_CROP_TRANSFORM: Transform = lambda image: image.center_crop((768, 768))
+DEFAULT_TRANSFORM: Transform = RANDOM_CROP_TRANSFORM
 
 
-class ColmapModel:
+Filter = Callable[[str, str], bool]
+NO_FILTER: Filter = lambda _scene, _model: True
+
+
+class ColmapModel(Dataset):
     def __init__(
         self,
         root: str,
-        transform: Callable[
-            [
-                Image,
-            ],
-            Image,
-        ] = DEFAULT_TRANSFORM,
+        transform: Transform = DEFAULT_TRANSFORM,
     ):
+        super().__init__()
+
         self.root = root
         self.transform = transform
         with h5py.File(os.path.join(root, "metadata.h5"), "r") as metadata_file:
@@ -39,6 +43,9 @@ class ColmapModel:
             self.R = torch.from_numpy(metadata_file["R"][()]).float()
             self.t = torch.from_numpy(metadata_file["t"][()]).float()
             self.K = torch.from_numpy(metadata_file["K"][()]).float()
+
+    def __repr__(self):
+        return f"ColmapModel(root={self.root}, len={len(self)})"
 
     def __len__(self):
         return len(self.pairs)
@@ -75,25 +82,75 @@ class ColmapModel:
         return image1, image2
 
 
-NO_FILTER = lambda _scene, _model: True
+class AdjustedSampler(Sampler[int]):
+    def __init__(
+        self, dataset: ConcatDataset, generator: torch.Generator | None = None
+    ):
+        self.dataset = dataset
+        self.subset_lengths = torch.tensor(
+            [len(d) for d in dataset.datasets], dtype=torch.int64
+        )
+        self.subset_weights = self.subset_lengths ** (-2 / 3)
+        self.subset_cumsums = torch.cumsum(
+            torch.cat([torch.zeros(1, dtype=torch.int64), self.subset_lengths], dim=0),
+            dim=0,
+        )
+        self.generator = generator
+
+    def __iter__(self):
+        if self.generator is None:
+            seed = int(torch.empty((), dtype=torch.int64).random_().item())
+            generator = torch.Generator()
+            generator.manual_seed(seed)
+        else:
+            generator = self.generator
+
+        for _ in range(len(self.dataset)):
+            subset_id = torch.multinomial(
+                self.subset_weights, 1, generator=generator
+            ).item()
+            example_id = torch.randint(
+                self.subset_lengths[subset_id], (1,), generator=generator
+            ).item()
+            yield self.subset_cumsums[subset_id].item() + example_id
+
+    def __len__(self):
+        return len(self.dataset)
 
 
-class ColmapDataset(torch.utils.data.ConcatDataset):
+class SubsampledDataset:
+    def __init__(self, dataset: Dataset, n: int):
+        self.dataset = dataset
+        generator = torch.Generator()
+        generator.manual_seed(42)
+        self.indices = torch.randperm(len(dataset))[:n]
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx: int):
+        return self.dataset[self.indices[idx]]
+
+    def __repr__(self):
+        return f"SubsampledDataset(dataset={self.dataset}, len={len(self)})"
+
+
+class ColmapDataset(ConcatDataset):
     collate_fn = DISKDataset.collate_fn
 
     def __init__(
         self,
         root: str,
-        filter: Callable[[str, str], bool] = NO_FILTER,
-        transform: Callable[
-            [
-                Image,
-            ],
-            Image,
-        ] = DEFAULT_TRANSFORM,
+        filter: Filter = NO_FILTER,
+        transform: Transform = DEFAULT_TRANSFORM,
+        tiny_debug: bool = False,
+        subsample: None | int = None,
     ):
         models = []
         for scene_name in tqdm(os.listdir(root)):
+            if tiny_debug and len(models) > 5:
+                break
+
             scene_path = os.path.join(root, scene_name)
             if not os.path.isdir(scene_path):
                 continue
@@ -107,9 +164,18 @@ class ColmapDataset(torch.utils.data.ConcatDataset):
                     continue
 
                 try:
-                    models.append(ColmapModel(model_path, transform=transform))
+                    model = ColmapModel(model_path, transform=transform)
                 except Exception as e:
                     print(f"Error loading model {model_path}: {e}")
+                    continue
+
+                if len(model) == 0:
+                    continue
+
+                if subsample is not None:
+                    model = SubsampledDataset(model, subsample)
+
+                models.append(model)
 
         super().__init__(models)
 
@@ -125,10 +191,16 @@ class ColmapDataModule(pl.LightningDataModule):
         collate_fn=ColmapDataset.collate_fn,
     )
 
-    def __init__(self, root: str, loader_kwargs: dict[str, Any] = dict()):
+    def __init__(
+        self,
+        root: str,
+        loader_kwargs: dict[str, Any] = dict(),
+        tiny_debug: bool = False,
+    ):
         super().__init__()
         self.root = root
         self.loader_kwargs = {**self.DEFAULT_LOADER_KWARGS, **loader_kwargs}
+        self.tiny_debug = tiny_debug
 
     def get_split_scenes(self, split: str) -> list[str]:
         with open(os.path.join(self.root, f"{split}.txt"), "r") as f:
@@ -137,32 +209,41 @@ class ColmapDataModule(pl.LightningDataModule):
     def setup(self, stage: str = None):
         if stage == "fit" or stage is None:
             self.train_dataset = ColmapDataset(
-                self.root, filter=self.train_filter, transform=RANDOM_CROP_TRANSFORM
+                self.root,
+                filter=self.train_filter,
+                transform=RANDOM_CROP_TRANSFORM,
+                tiny_debug=self.tiny_debug,
             )
             self.val_dataset = ColmapDataset(
-                self.root, filter=self.val_filter, transform=CENTER_CROP_TRANSFORM
+                self.root,
+                filter=self.val_filter,
+                transform=CENTER_CROP_TRANSFORM,
+                tiny_debug=self.tiny_debug,
+                subsample=128,
             )
         elif stage == "test":
-            self.train_dataset = ColmapDataset(
-                self.root, filter=self.test_filter, transform=CENTER_CROP_TRANSFORM
+            self.test_dataset = ColmapDataset(
+                self.root,
+                filter=self.test_filter,
+                transform=CENTER_CROP_TRANSFORM,
+                tiny_debug=self.tiny_debug,
+                subsample=128,
             )
         else:
             raise NotImplementedError(f"Unknown stage {stage}")
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.train_dataset, shuffle=True, **self.loader_kwargs
+        return DataLoader(
+            self.train_dataset,
+            sampler=AdjustedSampler(self.train_dataset),
+            **self.loader_kwargs,
         )
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.val_dataset, shuffle=False, **self.loader_kwargs
-        )
+        return DataLoader(self.val_dataset, shuffle=False, **self.loader_kwargs)
 
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.train_dataset, shuffle=False, **self.loader_kwargs
-        )
+        return DataLoader(self.test_dataset, shuffle=False, **self.loader_kwargs)
 
 
 class MegadepthDataModule(ColmapDataModule):
