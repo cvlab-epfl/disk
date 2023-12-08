@@ -42,7 +42,9 @@ class DiskLearner(pl.LightningModule):
     def manual_backward(self, images, features, matcher):
         return self.loss_fn.accumulate_grad(images, features, matcher)
 
-    def validation_step(self, batch, batch_idx: int) -> STEP_OUTPUT:
+    def validation_step(
+        self, batch, batch_idx: int, dataloader_idx: int
+    ) -> STEP_OUTPUT:
         bitmaps, images = batch
         bitmaps_ = bitmaps.reshape(-1, *bitmaps.shape[2:])
 
@@ -57,11 +59,11 @@ class DiskLearner(pl.LightningModule):
 
         for d_stat in d_stats.flat:
             for k, v in d_stat.items():
-                self.log(f"val/{k}", v)
+                self.log(f"val/hardness-{dataloader_idx}/{k}", v)
 
         for p_stat in p_stats.flat:
             for k, v in p_stat.items():
-                self.log(f"val/{k}", v)
+                self.log(f"val/hardness-{dataloader_idx}/{k}", v)
 
     def on_train_batch_start(self, *args, **kwargs) -> None:
         step = self.global_step

@@ -20,8 +20,16 @@ CENTER_CROP_TRANSFORM: Transform = lambda image: image.center_crop((768, 768))
 DEFAULT_TRANSFORM: Transform = RANDOM_CROP_TRANSFORM
 
 
-Filter = Callable[[str, str], bool]
-NO_FILTER: Filter = lambda _scene, _model: True
+SceneFilter = Callable[[str, str], bool]
+NO_SCENE_FILTER: SceneFilter = lambda _scene, _model: True
+
+PairFilter = Callable[
+    [
+        np.ndarray,
+    ],
+    np.ndarray,
+]  # int -> bool
+NO_PAIR_FILTER: PairFilter = lambda n_matches: np.ones_like(n_matches, dtype=bool)
 
 
 class ColmapModel(Dataset):
@@ -29,23 +37,41 @@ class ColmapModel(Dataset):
         self,
         root: str,
         transform: Transform = DEFAULT_TRANSFORM,
+        pair_filter: PairFilter = NO_PAIR_FILTER,
+        subsample_n: None | int = None,
     ):
         super().__init__()
 
         self.root = root
         self.transform = transform
+        self.pair_filter = pair_filter
+
         with h5py.File(os.path.join(root, "metadata.h5"), "r") as metadata_file:
             self.image_names: list[str] = [
                 name.decode("utf-8")
                 for name in metadata_file["image_name"][()].tolist()
             ]
-            self.pairs: np.ndarray = np.asarray(metadata_file["pairs"][()])
             self.R = torch.from_numpy(metadata_file["R"][()]).float()
             self.t = torch.from_numpy(metadata_file["t"][()]).float()
             self.K = torch.from_numpy(metadata_file["K"][()]).float()
 
+            pairs: np.ndarray = np.asarray(metadata_file["pairs"][()])
+
+            # filter pairs by number of matches
+            overlaps: np.ndarray = np.asarray(metadata_file["overlaps"][()])
+            pairs = pairs[self.pair_filter(overlaps)]
+
+            # potentially subsample pairs
+            if subsample_n is not None:
+                generator = torch.Generator()
+                generator.manual_seed(42)
+                indices = torch.randperm(len(pairs))[:subsample_n]
+                pairs = pairs[indices]
+
+            self.pairs = np.ascontiguousarray(pairs)
+
     def __repr__(self):
-        return f"ColmapModel(root={self.root}, len={len(self)})"
+        return f"ColmapModel(root={self.root}, len={len(self)}, transform={self.transform}, pair_filter={self.pair_filter})"
 
     def __len__(self):
         return len(self.pairs)
@@ -118,33 +144,15 @@ class AdjustedSampler(Sampler[int]):
         return len(self.dataset)
 
 
-class SubsampledDataset:
-    def __init__(self, dataset: Dataset, n: int):
-        self.dataset = dataset
-        generator = torch.Generator()
-        generator.manual_seed(42)
-        self.indices = torch.randperm(len(dataset))[:n]
-
-    def __len__(self):
-        return len(self.indices)
-
-    def __getitem__(self, idx: int):
-        return self.dataset[self.indices[idx]]
-
-    def __repr__(self):
-        return f"SubsampledDataset(dataset={self.dataset}, len={len(self)})"
-
-
 class ColmapDataset(ConcatDataset):
     collate_fn = DISKDataset.collate_fn
 
     def __init__(
         self,
         root: str,
-        filter: Filter = NO_FILTER,
-        transform: Transform = DEFAULT_TRANSFORM,
+        filter: SceneFilter = NO_SCENE_FILTER,
         tiny_debug: bool = False,
-        subsample: None | int = None,
+        model_kwargs: dict[str, Any] = dict(),
     ):
         models = []
         for scene_name in tqdm(os.listdir(root)):
@@ -164,7 +172,7 @@ class ColmapDataset(ConcatDataset):
                     continue
 
                 try:
-                    model = ColmapModel(model_path, transform=transform)
+                    model = ColmapModel(model_path, **model_kwargs)
                 except Exception as e:
                     print(f"Error loading model {model_path}: {e}")
                     continue
@@ -172,18 +180,21 @@ class ColmapDataset(ConcatDataset):
                 if len(model) == 0:
                     continue
 
-                if subsample is not None:
-                    model = SubsampledDataset(model, subsample)
-
                 models.append(model)
 
         super().__init__(models)
 
 
 class ColmapDataModule(pl.LightningDataModule):
-    train_filter = NO_FILTER
-    val_filter = NO_FILTER
-    test_filter = NO_FILTER
+    train_filter = NO_SCENE_FILTER
+    val_filter = NO_SCENE_FILTER
+    test_filter = NO_SCENE_FILTER
+
+    VAL_DATALOADER_NAMES = [
+        "easy_val_dataloader",
+        "medium_val_dataloader",
+        "hard_val_dataloader",
+    ]
 
     DEFAULT_LOADER_KWARGS = dict(
         batch_size=4,
@@ -211,16 +222,45 @@ class ColmapDataModule(pl.LightningDataModule):
             self.train_dataset = ColmapDataset(
                 self.root,
                 filter=self.train_filter,
-                transform=RANDOM_CROP_TRANSFORM,
                 tiny_debug=self.tiny_debug,
+                model_kwargs=dict(
+                    transform=RANDOM_CROP_TRANSFORM,
+                ),
             )
-            self.val_dataset = ColmapDataset(
+
+            self.easy_val_dataset = ColmapDataset(
                 self.root,
                 filter=self.val_filter,
-                transform=CENTER_CROP_TRANSFORM,
                 tiny_debug=self.tiny_debug,
-                subsample=128,
+                model_kwargs=dict(
+                    subsample_n=128,
+                    transform=CENTER_CROP_TRANSFORM,
+                    pair_filter=lambda n_matches: n_matches >= 50,
+                ),
             )
+
+            self.medium_val_dataset = ColmapDataset(
+                self.root,
+                filter=self.val_filter,
+                tiny_debug=self.tiny_debug,
+                model_kwargs=dict(
+                    subsample_n=128,
+                    transform=CENTER_CROP_TRANSFORM,
+                    pair_filter=lambda n_matches: (n_matches >= 10) & (n_matches < 50),
+                ),
+            )
+
+            self.hard_val_dataset = ColmapDataset(
+                self.root,
+                filter=self.val_filter,
+                tiny_debug=self.tiny_debug,
+                model_kwargs=dict(
+                    subsample_n=128,
+                    transform=CENTER_CROP_TRANSFORM,
+                    pair_filter=lambda n_matches: n_matches < 10,
+                ),
+            )
+
         elif stage == "test":
             self.test_dataset = ColmapDataset(
                 self.root,
@@ -240,7 +280,11 @@ class ColmapDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, shuffle=False, **self.loader_kwargs)
+        return [
+            DataLoader(self.easy_val_dataset, shuffle=False, **self.loader_kwargs),
+            DataLoader(self.medium_val_dataset, shuffle=False, **self.loader_kwargs),
+            DataLoader(self.hard_val_dataset, shuffle=False, **self.loader_kwargs),
+        ]
 
     def test_dataloader(self):
         return DataLoader(self.test_dataset, shuffle=False, **self.loader_kwargs)
