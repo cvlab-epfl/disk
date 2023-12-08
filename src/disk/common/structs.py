@@ -5,25 +5,28 @@ from torch_dimcheck import dimchecked
 # the class/object below is there for making type annotations like
 # def my_function(args) -> NpArray[OutputType]
 if sys.version_info >= (3, 7):
+
     class NpArray:
         def __class_getitem__(self, arg):
             pass
+
 else:
     # 3.6 and below don't support __class_getitem__
     class _NpArray:
         def __getitem__(self, _idx):
             pass
-    
+
     NpArray = _NpArray()
+
 
 class Features:
     @dimchecked
-    def __init__(self, kp: ['N', 2], desc: ['N', 'F'], kp_logp: ['N']):
+    def __init__(self, kp: ["N", 2], desc: ["N", "F"], kp_logp: ["N"]):
         assert kp.device == desc.device
         assert kp.device == kp_logp.device
 
-        self.kp      = kp
-        self.desc    = desc
+        self.kp = kp
+        self.desc = desc
         self.kp_logp = kp_logp
 
     @property
@@ -55,13 +58,14 @@ class Features:
             self.kp_logp.to(*args, **kwargs) if self.kp_logp is not None else None,
         )
 
+
 class MatchDistribution(abc.ABC):
     @abc.abstractmethod
-    def sample(self) -> [2, 'K']:
+    def sample(self) -> [2, "K"]:
         pass
 
     @abc.abstractmethod
-    def mle(self) -> [2, 'K']:
+    def mle(self) -> [2, "K"]:
         pass
 
     @abc.abstractmethod
@@ -90,15 +94,15 @@ class MatchDistribution(abc.ABC):
         return MatchedPairs(
             self.features_1().kp,
             self.features_2().kp,
-            matches,    
+            matches,
         )
 
 
 class MatchedPairs:
     @dimchecked
-    def __init__(self, kps1: ['N', 2], kps2: ['M', 2], matches: [2, 'K']):
-        self.kps1    = kps1
-        self.kps2    = kps2
+    def __init__(self, kps1: ["N", 2], kps2: ["M", 2], matches: [2, "K"]):
+        self.kps1 = kps1
+        self.kps2 = kps2
         self.matches = matches
 
     def to(self, *args, **kwargs):

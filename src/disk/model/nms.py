@@ -2,10 +2,11 @@ import torch
 import torch.nn.functional as F
 from torch_dimcheck import dimchecked
 
+
 @dimchecked
-def nms(signal: ['B', 'H', 'W'], window_size=5, cutoff=0.) -> ['B', 'H', 'W']:
+def nms(signal: ["B", "H", "W"], window_size=5, cutoff=0.0) -> ["B", "H", "W"]:
     if window_size % 2 != 1:
-        raise ValueError(f'window_size has to be odd, got {window_size}')
+        raise ValueError(f"window_size has to be odd, got {window_size}")
 
     _, ixs = F.max_pool2d(
         signal,
