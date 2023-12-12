@@ -24,4 +24,5 @@ dependencies = [
     "pytest",
     "pydegensac",
     "opencv-python-headless",
+    "kornia_moons",
 ]
