@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import imageio
 import lightning.pytorch as pl
-from torch.utils.data import Dataset, DataLoader, ConcatDataset, Sampler
+from torch.utils.data import Dataset, DataLoader, ConcatDataset, Sampler, WeightedRandomSampler
 from torch import Tensor
 from tqdm.auto import tqdm
 
@@ -65,7 +65,7 @@ class ColmapModel(Dataset):
             if subsample_n is not None:
                 generator = torch.Generator()
                 generator.manual_seed(42)
-                indices = torch.randperm(len(pairs))[:subsample_n]
+                indices = torch.randperm(len(pairs), generator=generator)[:subsample_n]
                 pairs = pairs[indices]
 
             self.pairs = np.ascontiguousarray(pairs)
@@ -75,6 +75,10 @@ class ColmapModel(Dataset):
 
     def __len__(self):
         return len(self.pairs)
+    
+    @property
+    def n_images(self) -> int:
+        return len(self.image_names)
 
     def _get_bitmap_path(self, id: int) -> str:
         image_name = self.image_names[id]
@@ -109,39 +113,21 @@ class ColmapModel(Dataset):
 
 
 class AdjustedSampler(Sampler[int]):
-    def __init__(
-        self, dataset: ConcatDataset, generator: torch.Generator | None = None
-    ):
-        self.dataset = dataset
-        self.subset_lengths = torch.tensor(
-            [len(d) for d in dataset.datasets], dtype=torch.int64
-        )
-        self.subset_weights = self.subset_lengths ** (-2 / 3)
-        self.subset_cumsums = torch.cumsum(
-            torch.cat([torch.zeros(1, dtype=torch.int64), self.subset_lengths], dim=0),
-            dim=0,
-        )
-        self.generator = generator
-
+    def __init__(self, dataset: ConcatDataset):
+        self.subset_weights = [d.n_images for d in dataset.datasets]
+        self.weighted_sampler = WeightedRandomSampler(self.subset_weights, replacement=True, num_samples=len(dataset))
+        self.subset_lengths = torch.tensor([len(d) for d in dataset.datasets], dtype=torch.int64)
+        self.subset_cumsums = torch.cumsum(self.subset_lengths, dim=0)
+    
     def __iter__(self):
-        if self.generator is None:
-            seed = int(torch.empty((), dtype=torch.int64).random_().item())
-            generator = torch.Generator()
-            generator.manual_seed(seed)
-        else:
-            generator = self.generator
+        for dataset_id in self.weighted_sampler:
+            dataset_length = self.subset_lengths[dataset_id]
+            dataset_offset = self.subset_cumsums[dataset_id] - dataset_length
 
-        for _ in range(len(self.dataset)):
-            subset_id = torch.multinomial(
-                self.subset_weights, 1, generator=generator
-            ).item()
-            example_id = torch.randint(
-                self.subset_lengths[subset_id], (1,), generator=generator
-            ).item()
-            yield self.subset_cumsums[subset_id].item() + example_id
-
+            yield dataset_offset + torch.randint(dataset_length, size=(1,)).item()
+    
     def __len__(self):
-        return len(self.dataset)
+        return len(self.weighted_sampler)
 
 
 class ColmapDataset(ConcatDataset):
@@ -283,7 +269,8 @@ class ColmapDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
-            sampler=AdjustedSampler(self.train_dataset),
+            #sampler=AdjustedSampler(self.train_dataset),
+            shuffle=True,
             **self.loader_kwargs,
         )
 
