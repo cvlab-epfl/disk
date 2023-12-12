@@ -66,18 +66,18 @@ class DiskLearner(pl.LightningModule):
             for k, v in p_stat.items():
                 self.log(f"val/hardness-{dataloader_idx}/{k}", v)
 
-        if batch_idx == 0:
-            for i, (imgs, feats) in enumerate(zip(images, features)):
-                fig = visualize(feats, imgs)
-                self.logger.experiment.add_figure(
-                    f"val/hardness-{dataloader_idx}/vis-{i}",
-                    fig,
-                    global_step=self.global_step,
-                )
+        #if batch_idx == 0:
+        #    for i, (imgs, feats) in enumerate(zip(images, features)):
+        #        fig = visualize(feats, imgs)
+        #        self.logger.experiment.add_figure(
+        #            f"val/hardness-{dataloader_idx}/vis-{i}",
+        #            fig,
+        #            global_step=self.global_step,
+        #        )
 
     def on_train_batch_start(self, *args, **kwargs) -> None:
         step = self.global_step
-        ramp = min(0.0, max(1.0, (step - 250) / 50_000))
+        ramp = max(0.0, min(1.0, (step - 250) / 50_000))
 
         self.loss_fn = Reinforce(
             self.reward_class(
