@@ -1,4 +1,5 @@
 import torch, abc, sys
+from torch import Tensor
 
 from torch_dimcheck import dimchecked
 
@@ -20,8 +21,7 @@ else:
 
 
 class Features:
-    @dimchecked
-    def __init__(self, kp: ["N", 2], desc: ["N", "F"], kp_logp: ["N"]):
+    def __init__(self, kp: Tensor, desc: Tensor, kp_logp: Tensor):
         assert kp.device == desc.device
         assert kp.device == kp_logp.device
 

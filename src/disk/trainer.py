@@ -2,6 +2,7 @@ from typing import Any
 
 import torch
 import lightning.pytorch as pl
+from kornia.feature.disk import DISKFeatures
 from torch import Tensor
 from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 
@@ -42,6 +43,10 @@ class DiskLearner(pl.LightningModule):
 
     def manual_backward(self, images, features, matcher):
         return self.loss_fn.accumulate_grad(images, features, matcher)
+    
+    def kornia_forward(self, images: Tensor) -> list[DISKFeatures]:
+        old_features = self.disk.features(images, kind="nms")
+        return [DISKFeatures(f.kp, f.desc, f.kp_logp) for f in old_features.flat]
 
     def validation_step(
         self, batch, batch_idx: int, dataloader_idx: int
@@ -66,14 +71,14 @@ class DiskLearner(pl.LightningModule):
             for k, v in p_stat.items():
                 self.log(f"val/hardness-{dataloader_idx}/{k}", v)
 
-        #if batch_idx == 0:
-        #    for i, (imgs, feats) in enumerate(zip(images, features)):
-        #        fig = visualize(feats, imgs)
-        #        self.logger.experiment.add_figure(
-        #            f"val/hardness-{dataloader_idx}/vis-{i}",
-        #            fig,
-        #            global_step=self.global_step,
-        #        )
+        if batch_idx == 0:
+            for i, (imgs, feats) in enumerate(zip(images, features)):
+                fig = visualize(feats, imgs)
+                self.logger.experiment.add_figure(
+                    f"val/hardness-{dataloader_idx}/vis-{i}",
+                    fig,
+                    global_step=self.global_step,
+                )
 
     def on_train_batch_start(self, *args, **kwargs) -> None:
         step = self.global_step

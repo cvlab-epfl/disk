@@ -47,7 +47,7 @@ class DISK(torch.nn.Module):
     @dimchecked
     def features(
         self, images: ["B", "C", "H", "W"], kind="rng", **kwargs
-    ) -> NpArray[Features]:
+    ) -> np.ndarray:
         """allowed values for `kind`:
         * rng
         * nms
