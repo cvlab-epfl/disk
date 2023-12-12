@@ -118,10 +118,10 @@ class Detector:
             torch.meshgrid(
                 torch.arange(H, device=dev),
                 torch.arange(W, device=dev),
+                indexing="ij",
             )[::-1],
             dim=0,
         ).unsqueeze(0)
-        cgrid_tiled = self._tile(cgrid)
 
         # extract xy coordinates from cgrid according to indices sampled
         # before

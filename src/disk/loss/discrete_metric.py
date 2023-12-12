@@ -77,12 +77,12 @@ class DiscreteMetric(torch.nn.Module):
         reward = self.lm_tp * n_good + self.lm_fp * n_bad + self.lm_kp * n_kps
 
         stats = {
-            "n_kps": n_kps,
-            "n_pairs": n_pairs,
-            "tp": n_good,
-            "fp": n_bad,
-            "reward": reward,
-            "precision": prec,
+            "n_kps": float(n_kps),
+            "n_pairs": float(n_pairs),
+            "tp": float(n_good),
+            "fp": float(n_bad),
+            "reward": float(reward),
+            "precision": float(prec),
         }
 
         return stats
