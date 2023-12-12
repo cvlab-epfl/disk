@@ -269,8 +269,7 @@ class ColmapDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
-            #sampler=AdjustedSampler(self.train_dataset),
-            shuffle=True,
+            sampler=AdjustedSampler(self.train_dataset),
             **self.loader_kwargs,
         )
 
