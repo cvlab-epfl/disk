@@ -6,7 +6,10 @@ from disk.common.structs import Features
 from disk.common.image import Image
 from disk.geom.epi import p_asymmdist_from_imgs
 
-def visualize(features: list[Features], images: list[Image], threshold_px: float = 2.5) -> plt.Figure:
+
+def visualize(
+    features: list[Features], images: list[Image], threshold_px: float = 2.5
+) -> plt.Figure:
     assert len(features) == 2
     assert len(images) == 2
 

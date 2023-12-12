@@ -43,7 +43,7 @@ class DiskLearner(pl.LightningModule):
 
     def manual_backward(self, images, features, matcher):
         return self.loss_fn.accumulate_grad(images, features, matcher)
-    
+
     def kornia_forward(self, images: Tensor) -> list[DISKFeatures]:
         old_features = self.disk.features(images, kind="nms")
         return [DISKFeatures(f.kp, f.desc, f.kp_logp) for f in old_features.flat]

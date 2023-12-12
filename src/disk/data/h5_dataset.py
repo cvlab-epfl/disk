@@ -6,7 +6,13 @@ import h5py
 import numpy as np
 import imageio
 import lightning.pytorch as pl
-from torch.utils.data import Dataset, DataLoader, ConcatDataset, Sampler, WeightedRandomSampler
+from torch.utils.data import (
+    Dataset,
+    DataLoader,
+    ConcatDataset,
+    Sampler,
+    WeightedRandomSampler,
+)
 from torch import Tensor
 from tqdm.auto import tqdm
 
@@ -75,7 +81,7 @@ class ColmapModel(Dataset):
 
     def __len__(self):
         return len(self.pairs)
-    
+
     @property
     def n_images(self) -> int:
         return len(self.image_names)
@@ -115,17 +121,21 @@ class ColmapModel(Dataset):
 class AdjustedSampler(Sampler[int]):
     def __init__(self, dataset: ConcatDataset):
         self.subset_weights = [d.n_images for d in dataset.datasets]
-        self.weighted_sampler = WeightedRandomSampler(self.subset_weights, replacement=True, num_samples=len(dataset))
-        self.subset_lengths = torch.tensor([len(d) for d in dataset.datasets], dtype=torch.int64)
+        self.weighted_sampler = WeightedRandomSampler(
+            self.subset_weights, replacement=True, num_samples=len(dataset)
+        )
+        self.subset_lengths = torch.tensor(
+            [len(d) for d in dataset.datasets], dtype=torch.int64
+        )
         self.subset_cumsums = torch.cumsum(self.subset_lengths, dim=0)
-    
+
     def __iter__(self):
         for dataset_id in self.weighted_sampler:
             dataset_length = self.subset_lengths[dataset_id]
             dataset_offset = self.subset_cumsums[dataset_id] - dataset_length
 
             yield dataset_offset + torch.randint(dataset_length, size=(1,)).item()
-    
+
     def __len__(self):
         return len(self.weighted_sampler)
 
