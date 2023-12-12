@@ -207,11 +207,13 @@ class ColmapDataModule(pl.LightningDataModule):
         root: str,
         loader_kwargs: dict[str, Any] = dict(),
         tiny_debug: bool = False,
+        easy_training: bool = False,
     ):
         super().__init__()
         self.root = root
         self.loader_kwargs = {**self.DEFAULT_LOADER_KWARGS, **loader_kwargs}
         self.tiny_debug = tiny_debug
+        self.easy_training = easy_training
 
     def get_split_scenes(self, split: str) -> list[str]:
         with open(os.path.join(self.root, f"{split}.txt"), "r") as f:
@@ -219,12 +221,18 @@ class ColmapDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str = None):
         if stage == "fit" or stage is None:
+            if self.easy_training:
+                pair_filter = lambda n_matches: n_matches >= 20
+            else:
+                pair_filter = NO_PAIR_FILTER
+
             self.train_dataset = ColmapDataset(
                 self.root,
                 filter=self.train_filter,
                 tiny_debug=self.tiny_debug,
                 model_kwargs=dict(
                     transform=RANDOM_CROP_TRANSFORM,
+                    pair_filter=pair_filter,
                 ),
             )
 
