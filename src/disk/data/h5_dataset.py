@@ -139,6 +139,18 @@ class AdjustedSampler(Sampler[int]):
     def __len__(self):
         return len(self.weighted_sampler)
 
+class FixedSampler(Sampler[int]):
+    def __init__(self, dataset: Dataset):
+        generator = torch.Generator()
+        generator.manual_seed(42)
+        self.permutation = torch.randperm(len(dataset)).tolist()
+    
+    def __iter__(self):
+        return iter(self.permutation)
+    
+    def __len__(self):
+        return len(self.permutation)
+
 
 class ColmapDataset(ConcatDataset):
     collate_fn = DISKDataset.collate_fn
@@ -285,9 +297,9 @@ class ColmapDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return [
-            DataLoader(self.easy_val_dataset, shuffle=False, **self.loader_kwargs),
-            DataLoader(self.medium_val_dataset, shuffle=False, **self.loader_kwargs),
-            DataLoader(self.hard_val_dataset, shuffle=False, **self.loader_kwargs),
+            DataLoader(self.easy_val_dataset, sampler=FixedSampler(self.easy_val_dataset), **self.loader_kwargs),
+            DataLoader(self.medium_val_dataset, sampler=FixedSampler(self.medium_val_dataset), **self.loader_kwargs),
+            DataLoader(self.hard_val_dataset, sampler=FixedSampler(self.hard_val_dataset), **self.loader_kwargs),
         ]
 
     def test_dataloader(self):
