@@ -80,9 +80,11 @@ class DiskLearner(pl.LightningModule):
                     global_step=self.global_step,
                 )
 
+    def ramp(self, step: int) -> float:
+        return max(0.0, min(1.0, (step - 250) / 100_000))
+
     def on_train_batch_start(self, *args, **kwargs) -> None:
-        step = self.global_step
-        ramp = max(0.0, min(1.0, (step - 250) / 50_000))
+        ramp = self.ramp(self.global_step)
 
         self.loss_fn = Reinforce(
             self.reward_class(

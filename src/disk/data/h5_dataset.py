@@ -139,15 +139,16 @@ class AdjustedSampler(Sampler[int]):
     def __len__(self):
         return len(self.weighted_sampler)
 
+
 class FixedSampler(Sampler[int]):
     def __init__(self, dataset: Dataset):
         generator = torch.Generator()
         generator.manual_seed(42)
         self.permutation = torch.randperm(len(dataset)).tolist()
-    
+
     def __iter__(self):
         return iter(self.permutation)
-    
+
     def __len__(self):
         return len(self.permutation)
 
@@ -215,13 +216,13 @@ class ColmapDataModule(pl.LightningDataModule):
         root: str,
         loader_kwargs: dict[str, Any] = dict(),
         tiny_debug: bool = False,
-        easy_training: bool = False,
+        training_min_matches: int | None = None,
     ):
         super().__init__()
         self.root = root
         self.loader_kwargs = {**self.DEFAULT_LOADER_KWARGS, **loader_kwargs}
         self.tiny_debug = tiny_debug
-        self.easy_training = easy_training
+        self.training_min_matches = training_min_matches
 
     def get_split_scenes(self, split: str) -> list[str]:
         with open(os.path.join(self.root, f"{split}.txt"), "r") as f:
@@ -229,8 +230,8 @@ class ColmapDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str = None):
         if stage == "fit" or stage is None:
-            if self.easy_training:
-                pair_filter = lambda n_matches: n_matches >= 20
+            if self.training_min_matches is not None:
+                pair_filter = lambda n_matches: n_matches >= self.training_min_matches
             else:
                 pair_filter = NO_PAIR_FILTER
 
@@ -297,9 +298,21 @@ class ColmapDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return [
-            DataLoader(self.easy_val_dataset, sampler=FixedSampler(self.easy_val_dataset), **self.loader_kwargs),
-            DataLoader(self.medium_val_dataset, sampler=FixedSampler(self.medium_val_dataset), **self.loader_kwargs),
-            DataLoader(self.hard_val_dataset, sampler=FixedSampler(self.hard_val_dataset), **self.loader_kwargs),
+            DataLoader(
+                self.easy_val_dataset,
+                sampler=FixedSampler(self.easy_val_dataset),
+                **self.loader_kwargs,
+            ),
+            DataLoader(
+                self.medium_val_dataset,
+                sampler=FixedSampler(self.medium_val_dataset),
+                **self.loader_kwargs,
+            ),
+            DataLoader(
+                self.hard_val_dataset,
+                sampler=FixedSampler(self.hard_val_dataset),
+                **self.loader_kwargs,
+            ),
         ]
 
     def test_dataloader(self):
