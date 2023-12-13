@@ -4,6 +4,15 @@ from torch import Tensor
 
 NpArray = list  # type alias
 
+def tensor_dataclass_repr(self) -> str:
+    fields = []
+    for k, v in self.__dict__.items():
+        if isinstance(v, Tensor):
+            fields.append((k, tuple(v.shape)))
+        else:
+            fields.append((k, v))
+    fields_repr = ", ".join(f"{k}={v}" for k, v in fields)
+    return f"{self.__class__.__name__}({fields_repr})"
 
 @dataclass
 class Features:
@@ -14,6 +23,8 @@ class Features:
     def __post_init__(self):
         assert self.kp.device == self.desc.device
         assert self.kp.device == self.kp_logp.device
+
+    __repr__ = tensor_dataclass_repr
 
     @property
     def n(self):
@@ -89,6 +100,8 @@ class MatchedPairs:
     kps1: Tensor
     kps2: Tensor
     matches: Tensor
+
+    __repr__ = tensor_dataclass_repr
 
     def to(self, *args, **kwargs):
         return MatchedPairs(

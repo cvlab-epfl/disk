@@ -9,6 +9,7 @@ from torch.distributions import Categorical, Bernoulli
 
 from disk import Features, NpArray
 from disk.model.nms import nms
+from disk.common.structs import tensor_dataclass_repr
 
 
 def select_on_last(values: Tensor, indices: Tensor) -> Tensor:
@@ -58,6 +59,8 @@ class Keypoints:
     log-probabilities. After construction, merge_with_descriptors is used to
     select corresponding descriptors from unet output.
     """
+
+    __repr__ = tensor_dataclass_repr
 
     def merge_with_descriptors(self, descriptors: Tensor) -> Features:
         """
