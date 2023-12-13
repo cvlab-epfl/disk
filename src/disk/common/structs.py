@@ -4,6 +4,7 @@ from torch import Tensor
 
 NpArray = list  # type alias
 
+
 def tensor_dataclass_repr(self) -> str:
     fields = []
     for k, v in self.__dict__.items():
@@ -13,6 +14,7 @@ def tensor_dataclass_repr(self) -> str:
             fields.append((k, v))
     fields_repr = ", ".join(f"{k}={v}" for k, v in fields)
     return f"{self.__class__.__name__}({fields_repr})"
+
 
 @dataclass
 class Features:

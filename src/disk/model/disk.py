@@ -7,22 +7,29 @@ from disk.model.unet import Unet
 from disk.common.structs import Features, NpArray
 
 
+def default_unet(desc_dim: int) -> torch.nn.Module:
+    return Unet(
+        in_features=3,
+        size=5,
+        down=[16, 32, 64, 64, 64],
+        up=[64, 64, 64, desc_dim + 1],
+    )
+
+
 class DISK(torch.nn.Module):
     def __init__(
         self,
-        desc_dim=128,
-        window=8,
-        kernel_size=5,
+        unet: torch.nn.Module | None = None,
+        desc_dim: int = 128,
+        window: int = 8,
     ):
         super(DISK, self).__init__()
 
+        if unet is None:
+            unet = default_unet(desc_dim)
+
         self.desc_dim = desc_dim
-        self.unet = Unet(
-            in_features=3,
-            size=kernel_size,
-            down=[16, 32, 64, 64, 64],
-            up=[64, 64, 64, desc_dim + 1],
-        )
+        self.unet = unet
         self.detector = Detector(window=window)
 
     def _split(self, unet_output: Tensor) -> tuple[Tensor, Tensor]:
