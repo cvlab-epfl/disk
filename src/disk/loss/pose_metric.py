@@ -20,8 +20,7 @@ class PoseQualityResult:
     def to_dict(self):
         return {
             **self.error.to_dict(),
-            "n_inliers": self.n_inliers,
-            "success": int(self.success),
+            "n_inliers": float(self.n_inliers),
         }
 
     def __str__(self):
