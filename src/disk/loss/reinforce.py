@@ -52,7 +52,7 @@ class Reinforce:
 
         stats = {
             "reward": exp_reward,
-            "n_keypoints": n_keypoints,
+            "n_keypoints": float(n_keypoints),
             "n_pairs": exp_n_pairs,
         }
 
