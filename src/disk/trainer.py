@@ -49,7 +49,7 @@ class DiskLearner(pl.LightningModule):
         return [DISKFeatures(f.kp, f.desc, f.kp_logp) for f in old_features.flat]
 
     def validation_step(
-        self, batch, batch_idx: int, dataloader_idx: int
+        self, batch, batch_idx: int, dataloader_idx: int = 0,
     ) -> STEP_OUTPUT:
         bitmaps, images = batch
         bitmaps_ = bitmaps.reshape(-1, *bitmaps.shape[2:])
