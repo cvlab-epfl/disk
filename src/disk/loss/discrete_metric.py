@@ -1,13 +1,12 @@
 import torch, math
 import numpy as np
-from torch_dimcheck import dimchecked
+from torch import Tensor
 
 from disk import MatchedPairs, Image, NpArray
 from disk.geom.epi import p_asymmdist_from_imgs
 
 
-@dimchecked
-def classify_pairs(kps1: ["N", 2], kps2: ["N", 2], img1: Image, img2: Image, th):
+def classify_pairs(kps1: Tensor, kps2: Tensor, img1: Image, img2: Image, th) -> Tensor:
     """
     classifies keypoint pairs as either possible or impossible under
     epipolar constraints

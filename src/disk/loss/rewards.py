@@ -1,5 +1,5 @@
 import torch
-from torch_dimcheck import dimchecked
+from torch import Tensor
 
 from disk import Image
 from disk.geom.epi import asymmdist_from_imgs
@@ -11,10 +11,7 @@ class EpipolarReward:
         self.lm_tp = lm_tp
         self.lm_fp = lm_fp
 
-    @dimchecked
-    def __call__(
-        self, kps1: ["N", 2], kps2: ["M", 2], img1: Image, img2: Image
-    ) -> ["N", "M"]:
+    def __call__(self, kps1: Tensor, kps2: Tensor, img1: Image, img2: Image) -> Tensor:
         """
         assigns all pairs of keypoints across (kps1, kps2) a reward depending
         if the are correct or incorrect under epipolar constraints
@@ -22,14 +19,13 @@ class EpipolarReward:
         good = self.classify(kps1, kps2, img1, img2)
         return self.lm_tp * good + self.lm_fp * (~good)
 
-    @dimchecked
     def classify(
         self,
-        kps1: ["N", 2],
-        kps2: ["M", 2],
+        kps1: Tensor,
+        kps2: Tensor,
         img1: Image,
         img2: Image,
-    ) -> ["N", "M"]:
+    ) -> Tensor:
         """
         classifies all pairs of keypoints across (kps1, kps2) as correct or
         incorrect depending on epipolar error
@@ -51,10 +47,7 @@ class DepthReward:
 
         self._epipolar = EpipolarReward(th=th)
 
-    @dimchecked
-    def __call__(
-        self, kps1: ["N", 2], kps2: ["M", 2], img1: Image, img2: Image
-    ) -> ["N", "M"]:
+    def __call__(self, kps1: Tensor, kps2: Tensor, img1: Image, img2: Image) -> Tensor:
         """
         classifies all (kp1, kp2) pairs as either
         * correct  : within dist_α in reprojection

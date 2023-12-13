@@ -1,14 +1,13 @@
 import torch, typing
 import numpy as np
-from torch_dimcheck import dimchecked
+from torch import Tensor
 
 from disk import NpArray, Features, MatchedPairs
 from disk.geom import distance_matrix
 
 
 class CycleMatcher:
-    @dimchecked
-    def match_features(self, feat_1: ["N", "F"], feat_2: ["M", "F"]) -> [2, "K"]:
+    def match_features(self, feat_1: Tensor, feat_2: Tensor) -> Tensor:
         dist_m = distance_matrix(feat_1, feat_2)
 
         if dist_m.shape[0] == 0 or dist_m.shape[1] == 0:

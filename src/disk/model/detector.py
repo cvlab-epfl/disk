@@ -1,16 +1,17 @@
+from dataclasses import dataclass
+
 import torch
 import numpy as np
 import torch.nn.functional as F
 
+from torch import Tensor
 from torch.distributions import Categorical, Bernoulli
-from torch_dimcheck import dimchecked
 
 from disk import Features, NpArray
 from disk.model.nms import nms
 
 
-@dimchecked
-def select_on_last(values: [..., "T"], indices: [...]) -> [...]:
+def select_on_last(values: Tensor, indices: Tensor) -> Tensor:
     """
     WARNING: this may be reinventing the wheel, but I don't know how to do
     it otherwise with PyTorch.
@@ -22,8 +23,7 @@ def select_on_last(values: [..., "T"], indices: [...]) -> [...]:
     return torch.gather(values, -1, indices[..., None]).squeeze(-1)
 
 
-@dimchecked
-def point_distribution(logits: [..., "T"]) -> ([...], [...], [...]):
+def point_distribution(logits: Tensor) -> tuple[Tensor, Tensor, Tensor]:
     """
     Implements the categorical proposal -> Bernoulli acceptance sampling
     scheme. Given a tensor of logits, performs samples on the last dimension,
@@ -49,20 +49,17 @@ def point_distribution(logits: [..., "T"]) -> ([...], [...], [...]):
     return proposals, accept_mask, logp
 
 
+@dataclass
 class Keypoints:
+    xys: Tensor
+    logp: Tensor
     """
     A simple, temporary struct used to store keypoint detections and their
     log-probabilities. After construction, merge_with_descriptors is used to
     select corresponding descriptors from unet output.
     """
 
-    @dimchecked
-    def __init__(self, xys: ["N", 2], logp: ["N"]):
-        self.xys = xys
-        self.logp = logp
-
-    @dimchecked
-    def merge_with_descriptors(self, descriptors: ["C", "H", "W"]) -> Features:
+    def merge_with_descriptors(self, descriptors: Tensor) -> Features:
         """
         Select descriptors from a dense `descriptors` tensor, at locations
         given by `self.xys`
@@ -75,12 +72,11 @@ class Keypoints:
         return Features(self.xys.to(torch.float32), desc, self.logp)
 
 
+@dataclass
 class Detector:
-    def __init__(self, window=8):
-        self.window = window
+    window: int = 8
 
-    @dimchecked
-    def _tile(self, heatmap: ["B", "C", "H", "W"]) -> ["B", "C", "h", "w", "T"]:
+    def _tile(self, heatmap: Tensor) -> Tensor:
         """
         Divides the heatmap `heatmap` into tiles of size (v, v) where
         v==self.window. The tiles are flattened, resulting in the last
@@ -96,8 +92,7 @@ class Detector:
             heatmap.unfold(2, v, v).unfold(3, v, v).reshape(b, c, h // v, w // v, v * v)
         )
 
-    @dimchecked
-    def sample(self, heatmap: ["B", 1, "H", "W"]) -> NpArray[Keypoints]:
+    def sample(self, heatmap: Tensor) -> NpArray[Keypoints]:
         """
         Implements the training-time grid-based sampling protocol
         """
@@ -146,8 +141,7 @@ class Detector:
 
         return np.array(keypoints, dtype=object)
 
-    @dimchecked
-    def nms(self, heatmap: ["B", 1, "H", "W"], n=None, **kwargs) -> NpArray[Keypoints]:
+    def nms(self, heatmap: Tensor, n: int = None, **kwargs) -> NpArray[Keypoints]:
         """
         Inference-time nms-based detection protocol
         """

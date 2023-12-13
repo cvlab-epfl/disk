@@ -1,10 +1,9 @@
 import torch
 import torch.nn.functional as F
-from torch_dimcheck import dimchecked
+from torch import Tensor
 
 
-@dimchecked
-def nms(signal: ["B", "H", "W"], window_size=5, cutoff=0.0) -> ["B", "H", "W"]:
+def nms(signal: Tensor, window_size: int = 5, cutoff: float = 0.0) -> Tensor:
     if window_size % 2 != 1:
         raise ValueError(f"window_size has to be odd, got {window_size}")
 

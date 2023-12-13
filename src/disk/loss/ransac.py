@@ -1,13 +1,11 @@
 import torch, pydegensac, cv2, typing
-
-from torch_dimcheck import dimchecked
+from torch import Tensor
 
 from disk import EstimationFailedError
 from disk.geom import Pose
 
 
-@dimchecked
-def _recover_pose(E: [3, 3], i_coords: ["N", 2], j_coords: ["N", 2]):
+def _recover_pose(E: Tensor, i_coords: Tensor, j_coords: Tensor) -> Pose:
     E_ = E.to(torch.float64).numpy()
     i_coords_ = i_coords.to(torch.float64).numpy()
     j_coords_ = j_coords.to(torch.float64).numpy()
@@ -27,8 +25,7 @@ def _recover_pose(E: [3, 3], i_coords: ["N", 2], j_coords: ["N", 2]):
     return Pose(R, T)
 
 
-@dimchecked
-def _normalize_coords(coords: ["N", 2], K: [3, 3]) -> ["N", 2]:
+def _normalize_coords(coords: Tensor, K: Tensor) -> Tensor:
     coords = coords.to(torch.float32)
 
     f = torch.tensor([[K[0, 0], K[1, 1]]])
@@ -43,8 +40,9 @@ class Ransac(typing.NamedTuple):
     max_iters: int = 10_000
     candidate_threshold: int = 10
 
-    @dimchecked
-    def __call__(self, left: ["N", 2], right: ["N", 2], K1: [3, 3], K2: [3, 3]):
+    def __call__(
+        self, left: Tensor, right: Tensor, K1: Tensor, K2: Tensor
+    ) -> tuple[Pose, Tensor]:
         left = left.cpu()
         right = right.cpu()
         K1 = K1.cpu()

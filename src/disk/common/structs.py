@@ -1,33 +1,19 @@
-import torch, abc, sys
+import abc
+from dataclasses import dataclass
 from torch import Tensor
 
-from torch_dimcheck import dimchecked
-
-# the class/object below is there for making type annotations like
-# def my_function(args) -> NpArray[OutputType]
-if sys.version_info >= (3, 7):
-
-    class NpArray:
-        def __class_getitem__(self, arg):
-            pass
-
-else:
-    # 3.6 and below don't support __class_getitem__
-    class _NpArray:
-        def __getitem__(self, _idx):
-            pass
-
-    NpArray = _NpArray()
+NpArray = list  # type alias
 
 
+@dataclass
 class Features:
-    def __init__(self, kp: Tensor, desc: Tensor, kp_logp: Tensor):
-        assert kp.device == desc.device
-        assert kp.device == kp_logp.device
+    kp: Tensor
+    desc: Tensor
+    kp_logp: Tensor | None
 
-        self.kp = kp
-        self.desc = desc
-        self.kp_logp = kp_logp
+    def __post_init__(self):
+        assert self.kp.device == self.desc.device
+        assert self.kp.device == self.kp_logp.device
 
     @property
     def n(self):
@@ -98,12 +84,11 @@ class MatchDistribution(abc.ABC):
         )
 
 
+@dataclass
 class MatchedPairs:
-    @dimchecked
-    def __init__(self, kps1: ["N", 2], kps2: ["M", 2], matches: [2, "K"]):
-        self.kps1 = kps1
-        self.kps2 = kps2
-        self.matches = matches
+    kps1: Tensor
+    kps2: Tensor
+    matches: Tensor
 
     def to(self, *args, **kwargs):
         return MatchedPairs(

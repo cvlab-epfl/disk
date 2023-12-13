@@ -4,17 +4,16 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib import collections as mplcollections
 from matplotlib import colors as mcolors
-from torch_dimcheck import dimchecked
+from torch import Tensor
 
 from disk import MatchedPairs
 
 
 class MultiFigure:
-    @dimchecked
     def __init__(
         self,
-        image1: ["H", "W", "C"],
-        image2: ["H", "W", "C"],
+        image1: Tensor,
+        image2: Tensor,
         grid=None,
         vertical=False,
     ):
@@ -52,11 +51,10 @@ class MultiFigure:
         else:
             self.offset = torch.tensor([w, 0])
 
-    @dimchecked
     def mark_xy(
         self,
-        xy1: [2, "N"],
-        xy2: [2, "N"],
+        xy1: Tensor,
+        xy2: Tensor,
         color="green",
         lines=True,
         marks=True,

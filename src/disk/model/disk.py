@@ -1,11 +1,10 @@
 import torch
 import numpy as np
+from torch import Tensor
 
-from torch_dimcheck import dimchecked
-
-from disk import NpArray, Features
 from disk.model.detector import Detector
 from disk.model.unet import Unet
+from disk.common.structs import Features, NpArray
 
 
 class DISK(torch.nn.Module):
@@ -26,10 +25,7 @@ class DISK(torch.nn.Module):
         )
         self.detector = Detector(window=window)
 
-    @dimchecked
-    def _split(
-        self, unet_output: ["B", "C", "H", "W"]
-    ) -> (["B", "C-1", "H", "W"], ["B", 1, "H", "W"]):
+    def _split(self, unet_output: Tensor) -> tuple[Tensor, Tensor]:
         """
         Splits the raw Unet output into descriptors and detection heatmap.
         """
@@ -40,10 +36,7 @@ class DISK(torch.nn.Module):
 
         return descriptors, heatmap
 
-    @dimchecked
-    def features(
-        self, images: ["B", "C", "H", "W"], kind="rng", **kwargs
-    ) -> np.ndarray:
+    def features(self, images: Tensor, kind="rng", **kwargs) -> NpArray[Features]:
         """allowed values for `kind`:
         * rng
         * nms

@@ -1,14 +1,13 @@
 from __future__ import annotations
+from dataclasses import dataclass
 import torch
 import torch.nn.functional as F
 import numpy as np
 import cv2
+from torch import Tensor
 
-from torch_dimcheck import dimchecked
 
-
-@dimchecked
-def _rescale(tensor: ["C", "H", "W"], size) -> ["C", "h", "w"]:
+def _rescale(tensor: Tensor, size: int) -> Tensor:
     return F.interpolate(
         tensor.unsqueeze(0),
         size=size,
@@ -17,8 +16,7 @@ def _rescale(tensor: ["C", "H", "W"], size) -> ["C", "h", "w"]:
     ).squeeze(0)
 
 
-@dimchecked
-def _pad(tensor: ["C", "H", "W"], size, value=0.0):
+def _pad(tensor: Tensor, size, value=0.0) -> Tensor:
     xpad = size[1] - tensor.shape[2]
     ypad = size[0] - tensor.shape[1]
 
@@ -29,26 +27,14 @@ def _pad(tensor: ["C", "H", "W"], size, value=0.0):
     return padded
 
 
+@dataclass
 class Image:
-    @dimchecked
-    def __init__(
-        self,
-        K: [3, 3],
-        R: [3, 3],
-        T: [3],
-        bitmap: [3, "H", "W"],
-        depth,  # [1, 'H', 'W'],
-        bitmap_path: str,
-    ):
-        self.K = K
-        self.R = R
-        self.T = T
-
-        self.bitmap = bitmap
-        self.depth = depth
-
-        # save bitmap path for potential debugging purposes
-        self.bitmap_path = bitmap_path
+    K: Tensor
+    R: Tensor
+    T: Tensor
+    bitmap: Tensor
+    depth: Tensor | None
+    bitmap_path: str  # for debugging
 
     @property
     def K_inv(self):
@@ -194,8 +180,7 @@ class Image:
 
         return self
 
-    @dimchecked
-    def unproject(self, xy: [2, "N"]) -> [3, "N"]:
+    def unproject(self, xy: Tensor) -> Tensor:
         depth = self.fetch_depth(xy)
 
         xyw = torch.cat(
@@ -211,21 +196,18 @@ class Image:
 
         return xyz_w
 
-    @dimchecked
-    def project(self, xyw: [3, "N"]) -> [2, "N"]:
+    def project(self, xyw: Tensor) -> Tensor:
         extrinsic = self.R @ xyw + self.T[:, None]
         intrinsic = self.K @ extrinsic
         return intrinsic[:2] / intrinsic[2]
 
-    @dimchecked
-    def in_range_mask(self, xy: [2, "N"]) -> ["N"]:
+    def in_range_mask(self, xy: Tensor) -> Tensor:
         h, w = self.shape
         x, y = xy
 
         return (0 <= x) & (x < w) & (0 <= y) & (y < h)
 
-    @dimchecked
-    def fetch_depth(self, xy: [2, "N"]) -> ["N"]:
+    def fetch_depth(self, xy: Tensor) -> Tensor:
         if self.depth is None:
             raise ValueError(f"Depth is not loaded")
 

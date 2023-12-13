@@ -1,7 +1,7 @@
 import torch, imageio, h5py, json, typing
 import numpy as np
 import os.path as P
-from torch_dimcheck import dimchecked
+from torch import Tensor
 
 from disk import NpArray, Image, DataError
 from disk.data.tuple_dataset import TupleDataset
@@ -46,16 +46,14 @@ def _crop(image, crop_size):
     return image.scale(crop_size).pad(crop_size)
 
 
-@dimchecked
-def _read_bitmap(bitmap_path) -> [3, "h", "w"]:
+def _read_bitmap(bitmap_path) -> Tensor:
     bitmap = imageio.imread(bitmap_path)
     bitmap = bitmap.astype(np.float32) / 255
 
     return torch.from_numpy(bitmap).permute(2, 0, 1)
 
 
-@dimchecked
-def _read_depth(depth_path) -> [1, "h", "w"]:
+def _read_depth(depth_path) -> Tensor:
     h5 = h5py.File(depth_path, "r")
     depth = h5["depth"][:].astype(np.float32)
     depth[depth == 0.0] = float("NaN")
