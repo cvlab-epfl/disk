@@ -2,12 +2,10 @@ import torch
 import numpy as np
 
 from torch_dimcheck import dimchecked
-from unets import Unet, thin_setup
 
 from disk import NpArray, Features
 from disk.model.detector import Detector
-
-DEFAULT_SETUP = {**thin_setup, "bias": True, "padding": True}
+from disk.model.unet import Unet
 
 
 class DISK(torch.nn.Module):
@@ -15,7 +13,6 @@ class DISK(torch.nn.Module):
         self,
         desc_dim=128,
         window=8,
-        setup=DEFAULT_SETUP,
         kernel_size=5,
     ):
         super(DISK, self).__init__()
@@ -26,7 +23,6 @@ class DISK(torch.nn.Module):
             size=kernel_size,
             down=[16, 32, 64, 64, 64],
             up=[64, 64, 64, desc_dim + 1],
-            setup=setup,
         )
         self.detector = Detector(window=window)
 

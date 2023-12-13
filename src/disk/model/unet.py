@@ -151,7 +151,7 @@ class ThinUnetUpBlock(nn.Module):
         self.cat_ = bottom_ + horizontal_
         self.out_ = out_
 
-        self.upsample = ThinUnetUpBlock(bottom_, size)
+        self.upsample = TrivialUpsample(bottom_, size)
         self.conv = Conv(self.cat_, self.out_, size)
 
     def forward(self, bot: Tensor, hor: Tensor) -> Tensor:
