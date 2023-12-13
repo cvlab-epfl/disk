@@ -25,7 +25,8 @@ class LimitableDataset:
         yieldable = self._indexes[:]
 
         if shuffle:
-            random.shuffle(yieldable)
+            generator = random.Random(42)
+            generator.shuffle(yieldable)
 
         if n is not None and len(yieldable) < n:
             msg = (
