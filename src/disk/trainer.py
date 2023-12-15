@@ -83,11 +83,50 @@ class DiskLearner(pl.LightningModule):
                     global_step=self.global_step,
                 )
 
-    def ramp(self, step: int) -> float:
-        return max(0.0, min(1.0, (step - 250) / 100_000))
+    # def ramp(self, step: int) -> float:
+    #    return max(0.0, min(1.0, (step - 250) / 100_000))
+
+    # def on_train_batch_start(self, *args, **kwargs) -> None:
+    #    ramp = self.ramp(self.global_step)
+
+    #    self.loss_fn = Reinforce(
+    #        self.reward_class(
+    #            lm_tp=1.0,
+    #            lm_fp=-0.25 * ramp,
+    #            th=1.5,
+    #        ),
+    #        lm_kp=-0.001 * ramp,
+    #    )
+
+    #    # this is a module which is used to perform matching. It has a single
+    #    # parameter called θ_M in the paper and `inverse_T` here. It could be
+    #    # learned but I instead anneal it between 15 and 50
+    #    inverse_T = 15 + 35 * ramp
+    #    self.matcher = ConsistentMatcher(inverse_T=inverse_T).to(self.device)
+    #    self.matcher.requires_grad_(False)
 
     def on_train_batch_start(self, *args, **kwargs) -> None:
-        ramp = self.ramp(self.global_step)
+        step = self.global_step
+
+        if step == 0:
+            self._adjust_loss(0)
+        elif step == 250:
+            self._adjust_loss(1)
+        elif step >= 5250:
+            step_adj = step - 250
+            is_step = step_adj % 5000 == 0
+            if is_step:
+                e = (step_adj // 5000) + 1
+                self._adjust_loss(e)
+
+    def _adjust_loss(self, e: int) -> None:
+        print(f"Adjusting loss for epoch {e}")
+        if e == 0:
+            ramp = 0.0
+        elif e == 1:
+            ramp = 0.1
+        else:
+            ramp = min(1.0, 0.1 + 0.2 * e)
 
         self.loss_fn = Reinforce(
             self.reward_class(
@@ -101,9 +140,8 @@ class DiskLearner(pl.LightningModule):
         # this is a module which is used to perform matching. It has a single
         # parameter called θ_M in the paper and `inverse_T` here. It could be
         # learned but I instead anneal it between 15 and 50
-        inverse_T = 15 + 35 * ramp
-        self.matcher = ConsistentMatcher(inverse_T=inverse_T).to(self.device)
-        self.matcher.requires_grad_(False)
+        inverse_T = 15 + 35 * min(1.0, 0.05 * e)
+        self.matcher = ConsistentMatcher(inverse_T=inverse_T)
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
         return torch.optim.Adam(self.disk.parameters(), lr=1e-4)

@@ -1,7 +1,9 @@
 import torch
 import numpy as np
+from torch import Tensor
 
-from disk import MatchDistribution, Features, NpArray, Image
+from disk import Features, NpArray, Image
+from disk.model.consistent_matcher import ConsistentMatcher, MatchDistribution
 
 
 class Reinforce:
@@ -9,7 +11,9 @@ class Reinforce:
         self.reward = reward
         self.lm_kp = lm_kp
 
-    def _loss_for_pair(self, match_dist: MatchDistribution, img1: Image, img2: Image):
+    def _loss_for_pair(
+        self, match_dist: MatchDistribution, img1: Image, img2: Image
+    ) -> tuple[Tensor, dict[str, float]]:
         elementwise_rewards = self.reward(
             match_dist.features_1().kp,
             match_dist.features_2().kp,
@@ -38,6 +42,7 @@ class Reinforce:
         sample_plogp = sample_p * (sample_logp + kps_logp)
 
         reinforce = (elementwise_rewards * sample_plogp).sum()
+        # reinforce = torch.einsum('ij,ij,ij->', elementwise_rewards, sample_p, sample_logp + kps_logp)
         kp_penalty = self.lm_kp * sample_lp_flat
         # loss = -((elementwise_rewards * sample_plogp).sum() \
         #         + self.lm_kp * sample_lp_flat.sum())
@@ -49,6 +54,7 @@ class Reinforce:
         exp_reward = (
             sample_p * elementwise_rewards
         ).sum().item() + self.lm_kp * n_keypoints
+        # exp_reward = torch.einsum('ij,ij->', sample_p, elementwise_rewards).item() + self.lm_kp * n_keypoints
 
         stats = {
             "reward": exp_reward,
@@ -62,7 +68,7 @@ class Reinforce:
         self,
         images: NpArray[Image],  # [N_scenes, N_per_scene]
         features: NpArray[Features],  # [N_scenes, N_per_scene]
-        matcher,
+        matcher: ConsistentMatcher,
     ):
         """
         This method performs BOTH forward and backward pass for the network
@@ -82,7 +88,9 @@ class Reinforce:
         N_scenes, N_per_scene = images.shape
         N_decisions = ((N_per_scene - 1) * N_per_scene) // 2
 
-        with torch.profiler.record_function("per_pair_backward"):
+        with torch.cuda.amp.autocast(enabled=False), torch.profiler.record_function(
+            "per_pair_backward"
+        ):
             stats = np.zeros((N_scenes, N_decisions), dtype=object)
 
             # we detach features from the computation graph, so that when we call
@@ -91,7 +99,12 @@ class Reinforce:
             # gradients across pairwise matches.
             detached_features = np.zeros(features.shape, dtype=object)
             for i in range(features.size):
-                detached_features.flat[i] = features.flat[i].detached_and_grad_()
+                feature: Features = features.flat[i]
+                feature_gradless = feature.detached_and_grad_()
+                feature_gradless = feature_gradless.to(
+                    torch.float32
+                )  # lower precision seems to cause worse results
+                detached_features.flat[i] = feature_gradless
 
             # we process each scene in batch independently
             for i_scene in range(N_scenes):
@@ -128,9 +141,6 @@ class Reinforce:
             for feat, detached_feat in zip(features.flat, detached_features.flat):
                 leaves.extend(feat.grad_tensors())
                 grads.extend([t.grad for t in detached_feat.grad_tensors()])
-            # for i in range(features.size):
-            # leaves.extend(features.flat[i].grad_tensors())
-            # grads.extend([t.grad for t in detached_features.flat[i].grad_tensors()])
 
             # finally propagate the gradients down to the network
             torch.autograd.backward(leaves, grads)
